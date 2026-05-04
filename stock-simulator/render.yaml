@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: stock-simulator-api
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        value: postgres://user:pass@host:port/db  # Replace with Render DB URL
