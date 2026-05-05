@@ -2,8 +2,11 @@ services:
   - type: web
     name: stock-simulator-api
     env: node
+    rootDir: server
     buildCommand: npm install
-    startCommand: node server.js
+    startCommand: node fixed_server.js
     envVars:
-      - key: DATABASE_URL
-        value: postgres://user:pass@host:port/db  # Replace with Render DB URL
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
