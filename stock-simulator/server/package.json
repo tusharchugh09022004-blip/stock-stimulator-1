@@ -2,9 +2,9 @@
   "name": "stock-simulator-server",
   "version": "1.0.0",
   "description": "Backend for virtual Indian stock investor",
-  "main": "server.js",
-
-"start": "node fixed_server.js"
+"main": "fixed_server.js",
+  "scripts": {
+    "start": "node fixed_server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {

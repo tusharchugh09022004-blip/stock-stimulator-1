@@ -14,14 +14,14 @@ const db = require('./db.js');
 const app = express();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const server = http.createServer(app);
-const io = socketIo(server, {
+io = socketIo(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', '*.onrender.com'],
     methods: ['GET', 'POST']
   }
 });
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'] }));
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', '*.onrender.com'] })); 
 app.use(express.json());
 
 // Authentication Middleware
