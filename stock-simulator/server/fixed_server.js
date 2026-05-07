@@ -16,12 +16,12 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const server = http.createServer(app);
 io = socketIo(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', '*.onrender.com'],
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', '*.onrender.com'] })); 
+app.use(cors({ origin: '*' })); 
 app.use(express.json());
 
 // Authentication Middleware
