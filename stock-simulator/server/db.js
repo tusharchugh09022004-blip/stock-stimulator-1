@@ -224,6 +224,15 @@ function getLoginHistory(userId, limit = 50) {
     .all(userId, safeLimit);
 }
 
+function getAllLoginHistory(limit = 100) {
+  const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+  return db
+    .prepare(
+      'SELECT id, userId, username, action, ipAddress, userAgent, loginTime FROM login_history ORDER BY loginTime DESC LIMIT ?'
+    )
+    .all(safeLimit);
+}
+
 function createSession(userId) {
   const sessionId = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -273,6 +282,7 @@ module.exports = {
   createUser,
   verifyUser,
   getUserByUsername,
+  getAllLoginHistory,
   saveLoginHistory,
   getLoginHistory,
   createSession,

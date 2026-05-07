@@ -196,6 +196,17 @@ app.get('/api/auth/login-history', verifyToken, (req, res) => {
   }
 });
 
+// Admin endpoint to view all login history
+app.get('/api/admin/all-login-history', verifyToken, (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 100;
+    const allHistory = db.getAllLoginHistory(limit);
+    res.json(allHistory);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch login history' });
+  }
+});
+
 const yahooClient = axios.create({
   timeout: 12000,
   headers: {
