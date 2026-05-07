@@ -17,6 +17,7 @@ import Portfolio from './components/Portfolio';
 import MarketMovers from './components/MarketMovers';
 import OrderHistory from './components/OrderHistory';
 import Settings from './components/Settings';
+import Admin from './components/Admin';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const socket = io(API_URL || undefined);
@@ -99,6 +100,8 @@ function App() {
   const [indexChartData, setIndexChartData] = useState({ nifty: { data: [], meta: null, loading: false }, sensex: { data: [], meta: null, loading: false } });
 const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], trending: [] });
   const [showSettings, setShowSettings] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const token = localStorage.getItem('token');
   const searchRef = useRef(null);
 
   const activeStock = stocks[0] || null;
@@ -440,6 +443,7 @@ const inWatchlist = (symbol) => watchlist.some((item) => item.symbol === symbol)
 <div className="user-section">
               <span className="user-name">👤 {user.username}</span>
               <button onClick={() => setShowSettings(true)} className="settings-btn">⚙️ Settings</button>
+              <button onClick={() => setShowAdmin(true)} className="settings-btn" style={{ marginLeft: '10px' }}>👤 Admin</button>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </div>
           </div>
@@ -858,10 +862,17 @@ const inWatchlist = (symbol) => watchlist.some((item) => item.symbol === symbol)
 <OrderHistory userId={user.userId} />
 
         {showSettings && (
-<Settings 
+<Settings
             userId={user.userId}
             onBalanceChange={handleBalanceUpdate}
             onClose={() => setShowSettings(false)}
+          />
+        )}
+
+        {showAdmin && (
+          <Admin
+            token={token}
+            onClose={() => setShowAdmin(false)}
           />
         )}
       </main>

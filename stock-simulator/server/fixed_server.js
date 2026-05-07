@@ -199,11 +199,37 @@ app.get('/api/auth/login-history', verifyToken, (req, res) => {
 // Admin endpoint to view all login history
 app.get('/api/admin/all-login-history', verifyToken, (req, res) => {
   try {
+    // Check if user is admin
+    const isAdmin = db.getUserAdminStatus(req.userId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
     const limit = parseInt(req.query.limit, 10) || 100;
     const allHistory = db.getAllLoginHistory(limit);
     res.json(allHistory);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch login history' });
+  }
+});
+
+// Endpoint to set user as admin (temporary - for initial setup)
+app.post('/api/admin/set-admin', verifyToken, (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    const user = db.getUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    db.setAdminStatus(user.userId, true);
+    res.json({ message: `${username} is now an admin` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to set admin status' });
   }
 });
 

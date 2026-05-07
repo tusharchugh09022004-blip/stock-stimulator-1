@@ -16,9 +16,13 @@ db.exec(`
     username TEXT UNIQUE,
     password TEXT NOT NULL,
     balance REAL DEFAULT 10000000,
+    isAdmin INTEGER DEFAULT 0,
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  -- Add isAdmin column if it doesn't exist (for existing databases)
+  ALTER TABLE users ADD COLUMN isAdmin INTEGER DEFAULT 0;
 
   CREATE TABLE IF NOT EXISTS sessions (
     sessionId TEXT PRIMARY KEY,
@@ -233,6 +237,19 @@ function getAllLoginHistory(limit = 100) {
     .all(safeLimit);
 }
 
+function setAdminStatus(userId, isAdmin) {
+  return db
+    .prepare('UPDATE users SET isAdmin = ? WHERE userId = ?')
+    .run(isAdmin ? 1 : 0, userId);
+}
+
+function getUserAdminStatus(userId) {
+  const result = db
+    .prepare('SELECT isAdmin FROM users WHERE userId = ?')
+    .get(userId);
+  return result ? result.isAdmin === 1 : false;
+}
+
 function createSession(userId) {
   const sessionId = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -285,6 +302,8 @@ module.exports = {
   getAllLoginHistory,
   saveLoginHistory,
   getLoginHistory,
+  setAdminStatus,
+  getUserAdminStatus,
   createSession,
   validateSession,
   deleteSession,
