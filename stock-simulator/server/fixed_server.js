@@ -213,12 +213,17 @@ app.get('/api/admin/all-login-history', verifyToken, (req, res) => {
   }
 });
 
-// Endpoint to set user as admin (temporary - for initial setup)
+// Endpoint to set user as admin (requires username and password verification)
 app.post('/api/admin/set-admin', verifyToken, (req, res) => {
   try {
-    const { username } = req.body;
-    if (!username) {
-      return res.status(400).json({ error: 'Username required' });
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // Verify username is "Tushar" and password is "Ikonkar@123"
+    if (username !== 'Tushar' || password !== 'Ikonkar@123') {
+      return res.status(403).json({ error: 'Invalid credentials' });
     }
 
     const user = db.getUserByUsername(username);

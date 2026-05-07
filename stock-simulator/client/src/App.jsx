@@ -18,6 +18,7 @@ import MarketMovers from './components/MarketMovers';
 import OrderHistory from './components/OrderHistory';
 import Settings from './components/Settings';
 import Admin from './components/Admin';
+import ScreenerDropdown from './components/ScreenerDropdown';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const socket = io(API_URL || undefined);
@@ -92,6 +93,7 @@ function App() {
   const [watchlist, setWatchlist] = useState([]);
   const [tradeQty, setTradeQty] = useState({});
   const [chartRange, setChartRange] = useState('1d');
+  const [selectedStock, setSelectedStock] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [chartMeta, setChartMeta] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
@@ -422,6 +424,11 @@ const inWatchlist = (symbol) => watchlist.some((item) => item.symbol === symbol)
     setUserData((prev) => ({ ...prev, balance: newBalance }));
   };
 
+  const handleScreenerStockSelect = (stock) => {
+    setSelectedStock(stock);
+    loadStock(stock.symbol);
+  };
+
   if (!isAuthenticated) {
     return <Auth onAuthSuccess={handleAuthSuccess} />;
   }
@@ -440,8 +447,9 @@ const inWatchlist = (symbol) => watchlist.some((item) => item.symbol === symbol)
               <span className="app-balance__label">Available Balance</span>
               <strong className="app-balance__value">{formatCompactCurrency(userData.balance)}</strong>
             </div>
-<div className="user-section">
+            <div className="user-section">
               <span className="user-name">👤 {user.username}</span>
+              <ScreenerDropdown selectedStock={selectedStock} onStockSelect={handleScreenerStockSelect} />
               <button onClick={() => setShowSettings(true)} className="settings-btn">⚙️ Settings</button>
               <button onClick={() => setShowAdmin(true)} className="settings-btn" style={{ marginLeft: '10px' }}>👤 Admin</button>
               <button onClick={handleLogout} className="logout-btn">Logout</button>

@@ -663,28 +663,94 @@ tr:hover {
     margin: 0 auto;
   }
 
+  .app-header {
+    position: static;
+  }
+
   .app-header__inner {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem 0;
+    flex-direction: row;
+    gap: 0.25rem;
+    padding: 0.25rem 0;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .app-header__eyebrow {
+    display: none;
+  }
+
+  .app-header__subtitle {
+    display: none;
+  }
+
+  .app-header__title {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
   }
 
   .app-header-right {
-    width: 100%;
-    flex-direction: column;
-    gap: 1rem;
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 0.15rem;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .app-balance {
-    width: 100%;
-    text-align: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 4px;
+  }
+
+  .app-balance__label {
+    font-size: 0.7rem;
+    margin-bottom: 0;
+    color: #64748b;
+  }
+
+  .app-balance__value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e40af;
   }
 
   .user-section {
-    width: 100%;
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    gap: 0.15rem;
     align-items: center;
+  }
+
+  .user-name {
+    font-size: 0.75rem;
+    display: none;
+  }
+
+  .settings-btn,
+  .logout-btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .search-icon {
+    width: 20px;
+    height: 20px;
+    left: 0.75rem;
+    opacity: 1;
+    z-index: 10;
+  }
+
+  .search-input {
+    padding-left: 2.5rem !important;
   }
 
   .search-panel {
@@ -738,19 +804,58 @@ tr:hover {
     padding: 1rem;
   }
 
-  .settings-orders-header,
-  .settings-order-row {
-    flex-wrap: wrap;
+  .settings-orders-list {
+    overflow-x: auto;
   }
 
-  .settings-order-date,
-  .settings-order-symbol,
-  .settings-order-action,
-  .settings-order-price,
-  .settings-order-qty,
+  .settings-orders-header,
+  .settings-order-row {
+    display: flex;
+    min-width: 500px;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .settings-order-date {
+    flex: 0 0 120px;
+    font-size: 0.75rem;
+  }
+
+  .settings-order-symbol {
+    flex: 0 0 80px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .settings-order-action {
+    flex: 0 0 70px;
+    font-size: 0.7rem;
+  }
+
+  .settings-order-qty {
+    flex: 0 0 60px;
+    font-size: 0.75rem;
+  }
+
+  .settings-order-price {
+    flex: 0 0 80px;
+    font-size: 0.75rem;
+  }
+
   .settings-order-total {
-    flex: 1 1 40%;
-    margin-bottom: 0.5rem;
+    flex: 0 0 80px;
+    font-size: 0.75rem;
+  }
+
+  .settings-order-delete {
+    flex: 0 0 40px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .app-header__subtitle {
+    font-size: 0.8rem;
+    display: none;
   }
 }
 
@@ -2373,8 +2478,204 @@ tr:hover {
   }
 
   .portfolio-panel {
-    border-radius: 22px;
-    padding: 0.8rem;
+    border-radius: 16px;
+    padding: 0.75rem;
+  }
+
+  .portfolio-hero {
+    padding: 1rem;
+  }
+
+  .portfolio-hero__badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .portfolio-hero__header {
+    gap: 0.5rem;
+  }
+
+  .portfolio-eyebrow {
+    font-size: 0.7rem;
+  }
+
+  .portfolio-title {
+    font-size: 1.25rem;
+  }
+
+  .portfolio-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .portfolio-performance {
+    font-size: 0.85rem;
+  }
+
+  .portfolio-value-card {
+    padding: 0.75rem;
+  }
+
+  .portfolio-value-card__label {
+    font-size: 0.7rem;
+  }
+
+  .portfolio-value-card__amount {
+    font-size: 1.1rem;
+  }
+
+  .portfolio-value-card__delta {
+    font-size: 0.8rem;
+  }
+
+  .portfolio-stats {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .portfolio-stat {
+    padding: 0.5rem;
+  }
+
+  .portfolio-stat__label {
+    font-size: 0.7rem;
+  }
+
+  .portfolio-stat__value {
+    font-size: 0.9rem;
+  }
+
+  .portfolio-allocation {
+    padding: 0.75rem;
+  }
+
+  .portfolio-allocation__chart {
+    height: 180px;
+  }
+
+  .portfolio-allocation__legend {
+    display: none;
+  }
+
+  .portfolio-section-heading {
+    gap: 0.25rem;
+  }
+
+  .portfolio-section-heading__eyebrow {
+    font-size: 0.65rem;
+  }
+
+  .portfolio-section-heading h3 {
+    font-size: 1rem;
+  }
+
+  .portfolio-toolbar {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .portfolio-toolbar__count {
+    font-size: 0.7rem;
+  }
+
+  .portfolio-filter {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .portfolio-table-wrap {
+    overflow-x: auto;
+  }
+
+  .portfolio-table {
+    min-width: 100%;
+  }
+
+  .portfolio-table thead {
+    display: none;
+  }
+
+  .portfolio-table tbody {
+    display: block;
+  }
+
+  .portfolio-table tr {
+    display: block;
+    border: 1px solid var(--border);
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: white;
+  }
+
+  .portfolio-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+    padding: 0.5rem 0;
+    font-size: 0.85rem;
+  }
+
+  .portfolio-table td:first-child {
+    padding-top: 0;
+  }
+
+  .portfolio-table td:last-child {
+    padding-bottom: 0;
+  }
+
+  .portfolio-table td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+  }
+
+  .portfolio-symbol {
+    justify-content: flex-start;
+  }
+
+  .portfolio-symbol__avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .portfolio-symbol strong {
+    font-size: 0.9rem;
+  }
+
+  .portfolio-symbol span {
+    font-size: 0.75rem;
+  }
+
+  .portfolio-pill {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .portfolio-sell-action {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .portfolio-sell-input {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .portfolio-sell-btn {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .portfolio-summary {
+    font-size: 0.75rem;
   }
 
   .watchlist-panel {
@@ -2383,78 +2684,6 @@ tr:hover {
 
   .watchlist-list {
     overflow: visible;
-  }
-
-  .portfolio-hero__header,
-  .portfolio-value-card,
-  .portfolio-stats,
-  .portfolio-allocation__body,
-  .portfolio-section-heading--row {
-    grid-template-columns: 1fr;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .portfolio-performance,
-  .portfolio-value-card__delta {
-    text-align: left;
-  }
-
-  .portfolio-title {
-    font-size: 1.7rem;
-  }
-
-  .portfolio-table {
-    display: block;
-    overflow-x: auto;
-  }
-
-  .portfolio-table thead, .portfolio-table tbody, .portfolio-table th, .portfolio-table td, .portfolio-table tr {
-    display: block;
-  }
-
-  .portfolio-table th {
-    display: none;
-  }
-
-  .portfolio-table tr {
-    border: 1px solid var(--border);
-    margin-bottom: 1rem;
-    border-radius: 8px;
-    padding: 1rem;
-    background: white;
-  }
-
-  .portfolio-table td {
-    border: none;
-    position: relative;
-    padding-left: 50%;
-    text-align: right;
-    font-size: 0.9rem;
-  }
-
-  .portfolio-table td:before {
-    content: attr(data-label);
-    position: absolute;
-    left: 6px;
-    width: 45%;
-    font-weight: 600;
-    text-align: left;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-  }
-
-  .portfolio-symbol {
-    justify-content: flex-end;
-  }
-
-  .portfolio-sell-action {
-    justify-content: flex-end;
-  }
-
-  .portfolio-toolbar {
-    justify-content: space-between;
   }
 }
 

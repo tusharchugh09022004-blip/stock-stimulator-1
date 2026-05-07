@@ -4,6 +4,7 @@ import axios from 'axios';
 const Admin = ({ token, onClose }) => {
   const [loginHistory, setLoginHistory] = useState([]);
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -49,19 +50,20 @@ const Admin = ({ token, onClose }) => {
   };
 
   const setAdmin = async () => {
-    if (!username) {
-      setMessage('Please enter a username');
+    if (!username || !password) {
+      setMessage('Please enter both username and password');
       return;
     }
 
     try {
       const response = await axios.post(
         '/api/admin/set-admin',
-        { username },
+        { username, password },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessage(response.data.message);
       setUsername('');
+      setPassword('');
       setTimeout(() => checkAdminStatus(), 1000);
     } catch (err) {
       setMessage(err.response?.data?.error || 'Failed to set admin');
@@ -140,7 +142,7 @@ const Admin = ({ token, onClose }) => {
           }}>
             <p style={{ marginBottom: '8px' }}><strong>To grant admin access:</strong></p>
             <ol style={{ marginLeft: '20px', lineHeight: '1.6' }}>
-              <li>Enter your username below</li>
+              <li>Enter your username and password below</li>
               <li>Click "Make Admin" button</li>
               <li>Refresh the page</li>
             </ol>
@@ -153,6 +155,20 @@ const Admin = ({ token, onClose }) => {
                 width: '100%',
                 padding: '10px 12px',
                 marginTop: '12px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                fontSize: '14px'
+              }}
+            />
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                marginTop: '8px',
                 borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 fontSize: '14px'
@@ -239,6 +255,20 @@ const Admin = ({ token, onClose }) => {
               placeholder="Enter username to make admin"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: '200px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '14px'
+              }}
+            />
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               style={{
                 flex: 1,
                 minWidth: '200px',
