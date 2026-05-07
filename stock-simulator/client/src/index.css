@@ -656,6 +656,132 @@ tr:hover {
   h2 {
     font-size: 20px;
   }
+
+  .app-header__inner,
+  .content-shell {
+    width: calc(100% - 1rem);
+    margin: 0 auto;
+  }
+
+  .app-header__inner {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+
+  .app-header-right {
+    width: 100%;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .app-balance {
+    width: 100%;
+    text-align: center;
+  }
+
+  .user-section {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .search-panel {
+    padding: 1rem;
+  }
+
+  .search-panel__header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .search-panel__input {
+    width: 100%;
+  }
+
+  .search-panel__suggestions {
+    position: static;
+    margin-top: 0.5rem;
+  }
+
+  .chart-panel {
+    padding: 1rem;
+  }
+
+  .chart-panel__chart {
+    height: 300px;
+  }
+
+  .holdings-section {
+    padding: 1rem;
+  }
+
+  .market-movers {
+    padding: 1rem;
+  }
+
+  .market-movers__grid {
+    grid-template-columns: 1fr;
+  }
+
+  table {
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 8px 4px;
+  }
+
+  .settings-card {
+    padding: 1rem;
+  }
+
+  .settings-orders-header,
+  .settings-order-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-order-date,
+  .settings-order-symbol,
+  .settings-order-action,
+  .settings-order-price,
+  .settings-order-qty,
+  .settings-order-total {
+    flex: 1 1 40%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header__title {
+    font-size: 1rem;
+  }
+
+  .app-header__subtitle {
+    font-size: 0.8rem;
+    display: none;
+  }
+
+  .chart-panel__chart {
+    height: 250px;
+  }
+
+  .user-name {
+    font-size: 0.9rem;
+  }
+
+  .settings-btn,
+  .logout-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .settings-order-delete {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
 }
 
 /* Spacing Utilities */
