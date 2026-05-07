@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
     '/api': {
-      target: 'http://localhost:5000',
+      target: 'https://stock-stimulator-1.onrender.com',
       changeOrigin: true,
       ws: true
     }
