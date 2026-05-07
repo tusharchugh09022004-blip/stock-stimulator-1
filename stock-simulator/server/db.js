@@ -1,14 +1,15 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const dbPath = path.join(__dirname, 'stock-simulator.db');
-const db = new Database(dbPath);
+const db = new Database(dbPath, { fileMustExist: false });
 
-// Enable WAL mode for better performance
+// Pragmas for better performance
 db.pragma('journal_mode = WAL');
 
-// Create tables
+// Schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     userId TEXT PRIMARY KEY,
@@ -48,7 +49,7 @@ db.exec(`
     UNIQUE(userId, symbol)
   );
 
-CREATE TABLE IF NOT EXISTS orders (
+  CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId TEXT NOT NULL,
     symbol TEXT NOT NULL,
@@ -79,234 +80,180 @@ CREATE TABLE IF NOT EXISTS orders (
   CREATE INDEX IF NOT EXISTS idx_login_history_time ON login_history(loginTime);
 `);
 
-// Default balance
 const DEFAULT_BALANCE = 10000000;
 
 // User operations
 function getUser(userId) {
-  let user = db.prepare('SELECT * FROM users WHERE userId = ?').get(userId);
-  
-  if (!user) {
-    return null;
-  }
-  
-  return user;
+  return db.prepare('SELECT * FROM users WHERE userId = ?').get(userId) || null;
 }
 
 function updateUserBalance(userId, balance) {
   const stmt = db.prepare('UPDATE users SET balance = ?, updatedAt = CURRENT_TIMESTAMP WHERE userId = ?');
-  return stmt.run(balance, userId);
+  const info = stmt.run(balance, userId);
+  return info.changes > 0;
 }
 
 // Portfolio operations
 function getPortfolio(userId) {
-  const positions = db.prepare('SELECT symbol, qty, avgPrice FROM portfolios WHERE userId = ?').all(userId);
+  const rows = db
+    .prepare('SELECT symbol, qty, avgPrice FROM portfolios WHERE userId = ?')
+    .all(userId);
+
   const portfolio = {};
-  
-  for (const pos of positions) {
-    portfolio[pos.symbol] = {
-      qty: pos.qty,
-      avgPrice: pos.avgPrice
-    };
+  for (const pos of rows) {
+    portfolio[pos.symbol] = { qty: Number(pos.qty), avgPrice: Number(pos.avgPrice) };
   }
-  
   return portfolio;
 }
 
 function updatePortfolio(userId, symbol, qty, avgPrice) {
   if (qty <= 0) {
-    // Remove position
     db.prepare('DELETE FROM portfolios WHERE userId = ? AND symbol = ?').run(userId, symbol);
     return;
   }
-  
-  const upsert = db.prepare(`
-    INSERT INTO portfolios (userId, symbol, qty, avgPrice) VALUES (?, ?, ?, ?)
+
+  db.prepare(`
+    INSERT INTO portfolios (userId, symbol, qty, avgPrice, updatedAt)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(userId, symbol) DO UPDATE SET
       qty = excluded.qty,
       avgPrice = excluded.avgPrice,
       updatedAt = CURRENT_TIMESTAMP
-  `);
-  
-  return upsert.run(userId, symbol, qty, avgPrice);
+  `).run(userId, symbol, qty, avgPrice);
 }
 
 function clearPortfolioPosition(userId, symbol) {
-  return db.prepare('DELETE FROM portfolios WHERE userId = ? AND symbol = ?').run(userId, symbol);
+  db.prepare('DELETE FROM portfolios WHERE userId = ? AND symbol = ?').run(userId, symbol);
 }
 
 // Watchlist operations
 function getWatchlist(userId) {
-  const items = db.prepare(`
-    SELECT symbol, yahooSymbol, name, exchange 
-    FROM watchlists 
-    WHERE userId = ? 
-    ORDER BY id
-  `).all(userId);
-  
-  return items;
+  return db
+    .prepare(
+      'SELECT symbol, yahooSymbol, name, exchange FROM watchlists WHERE userId = ? ORDER BY id'
+    )
+    .all(userId);
 }
 
 function addToWatchlist(userId, symbol, yahooSymbol, name, exchange) {
-  const upsert = db.prepare(`
-    INSERT INTO watchlists (userId, symbol, yahooSymbol, name, exchange) VALUES (?, ?, ?, ?, ?)
+  db.prepare(`
+    INSERT INTO watchlists (userId, symbol, yahooSymbol, name, exchange, createdAt)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(userId, symbol) DO NOTHING
-  `);
-  
-  return upsert.run(userId, symbol, yahooSymbol, name, exchange);
+  `).run(userId, symbol, yahooSymbol, name, exchange);
 }
 
 function removeFromWatchlist(userId, symbol) {
-  return db.prepare('DELETE FROM watchlists WHERE userId = ? AND symbol = ?').run(userId, symbol);
+  db.prepare('DELETE FROM watchlists WHERE userId = ? AND symbol = ?').run(userId, symbol);
 }
 
 // Order operations
 function saveOrder(userId, symbol, yahooSymbol, action, qty, price, total) {
-  const stmt = db.prepare(`
-    INSERT INTO orders (userId, symbol, yahooSymbol, action, qty, price, total)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  return stmt.run(userId, symbol, yahooSymbol, action, qty, price, total);
+  db.prepare(`
+    INSERT INTO orders (userId, symbol, yahooSymbol, action, qty, price, total, orderTime)
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `).run(userId, symbol, yahooSymbol, action, qty, price, total);
 }
 
 function getOrderHistory(userId, limit = 50) {
-  const orders = db.prepare(`
-    SELECT * FROM orders 
-    WHERE userId = ? 
-    ORDER BY orderTime DESC 
-    LIMIT ?
-  `).all(userId, limit);
-  return orders;
-}
-
-function deleteOrder(orderId, userId) {
-  // Verify the order belongs to the user before deleting
-  const order = db.prepare('SELECT * FROM orders WHERE id = ? AND userId = ?').get(orderId, userId);
-  if (!order) return { changes: 0 };
-  
-  // Refund balance if it was a buy order (reverse the trade)
-  if (order.action === 'buy') {
-    const refund = order.total;
-    db.prepare('UPDATE users SET balance = balance + ? WHERE userId = ?').run(refund, userId);
-  } else if (order.action === 'sell') {
-    // For sell orders, we need to add back the shares to portfolio
-    const existing = db.prepare('SELECT * FROM portfolios WHERE userId = ? AND symbol = ?').get(userId, order.symbol);
-    if (existing) {
-      db.prepare('UPDATE portfolios SET qty = qty + ? WHERE userId = ? AND symbol = ?').run(order.qty, userId, order.symbol);
-    } else {
-      db.prepare('INSERT INTO portfolios (userId, symbol, qty, avgPrice) VALUES (?, ?, ?, ?)').run(userId, order.symbol, order.qty, order.price);
-    }
-  }
-  
-  return db.prepare('DELETE FROM orders WHERE id = ? AND userId = ?').run(orderId, userId);
+  const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+  return db
+    .prepare('SELECT * FROM orders WHERE userId = ? ORDER BY orderTime DESC LIMIT ?')
+    .all(userId, safeLimit);
 }
 
 function deleteOrderHistoryRecord(orderId, userId) {
-  // Delete order record without reversing the trade
-  // Portfolio state is the source of truth, not order history
-  return db.prepare('DELETE FROM orders WHERE id = ? AND userId = ?').run(orderId, userId);
+  const info = db
+    .prepare('DELETE FROM orders WHERE id = ? AND userId = ?')
+    .run(orderId, userId);
+  return { changes: info.changes };
 }
 
 function deleteAllOrders(userId) {
-  // Just delete all order records - do NOT reverse trades
-  // Order history is just a log; clearing it shouldn't affect portfolio state
-  return db.prepare('DELETE FROM orders WHERE userId = ?').run(userId);
+  const info = db.prepare('DELETE FROM orders WHERE userId = ?').run(userId);
+  return { changes: info.changes };
 }
 
 // Auth operations
 function createUser(username, password) {
-  const crypto = require('crypto');
   const userId = crypto.randomUUID();
   const hashedPassword = bcrypt.hashSync(password, 10);
-  
+
   try {
-    const stmt = db.prepare(`
-      INSERT INTO users (userId, username, password, balance)
-      VALUES (?, ?, ?, ?)
-    `);
-    stmt.run(userId, username, hashedPassword, DEFAULT_BALANCE);
+    db.prepare(
+      'INSERT INTO users (userId, username, password, balance) VALUES (?, ?, ?, ?)'
+    ).run(userId, username, hashedPassword, DEFAULT_BALANCE);
+
     return { userId, username, balance: DEFAULT_BALANCE };
   } catch (err) {
-    if (err.message.includes('UNIQUE constraint failed')) {
-      return null; // Username already exists
-    }
+    // unique violation
+    if (String(err && err.message).toLowerCase().includes('unique')) return null;
     throw err;
   }
 }
 
 function verifyUser(username, password) {
-  const user = db.prepare(`
-    SELECT * FROM users WHERE username = ?`).get(username);
-  
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user) return null;
-  
-  const passwordMatch = bcrypt.compareSync(password, user.password);
-  if (!passwordMatch) return null;
-  
-  return user;
+
+  const ok = bcrypt.compareSync(password, user.password);
+  return ok ? user : null;
 }
 
 function getUserByUsername(username) {
-  return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  return db.prepare('SELECT * FROM users WHERE username = ?').get(username) || null;
+}
+
+function getUserById(userId) {
+  return db.prepare('SELECT userId, username, balance FROM users WHERE userId = ?').get(userId) || null;
 }
 
 function saveLoginHistory(userId, username, action, ipAddress, userAgent) {
-  const stmt = db.prepare(`
-    INSERT INTO login_history (userId, username, action, ipAddress, userAgent)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-  return stmt.run(userId, username, action, ipAddress || null, userAgent || null);
+  db.prepare(`
+    INSERT INTO login_history (userId, username, action, ipAddress, userAgent, loginTime)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `).run(userId, username, action, ipAddress || null, userAgent || null);
 }
 
 function getLoginHistory(userId, limit = 50) {
-  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(200, limit)) : 50;
-  return db.prepare(`
-    SELECT id, userId, username, action, ipAddress, userAgent, loginTime
-    FROM login_history
-    WHERE userId = ?
-    ORDER BY loginTime DESC
-    LIMIT ?
-  `).all(userId, safeLimit);
+  const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+  return db
+    .prepare(
+      'SELECT id, userId, username, action, ipAddress, userAgent, loginTime FROM login_history WHERE userId = ? ORDER BY loginTime DESC LIMIT ?'
+    )
+    .all(userId, safeLimit);
 }
 
 function createSession(userId) {
-  const crypto = require('crypto');
   const sessionId = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
-  
-  db.prepare(`
-    INSERT INTO sessions (sessionId, userId, expiresAt)
-    VALUES (?, ?, ?)
-  `).run(sessionId, userId, expiresAt);
-  
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  db.prepare('INSERT INTO sessions (sessionId, userId, createdAt, expiresAt) VALUES (?, ?, CURRENT_TIMESTAMP, ?)')
+    .run(sessionId, userId, expiresAt);
+
   return sessionId;
 }
 
 function validateSession(sessionId) {
-  const session = db.prepare(`
-    SELECT s.*, u.username, u.balance
-    FROM sessions s
-    JOIN users u ON s.userId = u.userId
-    WHERE s.sessionId = ?
-  `).get(sessionId);
-  
+  const session = db
+    .prepare(
+      `SELECT s.*, u.username, u.balance
+       FROM sessions s JOIN users u ON s.userId = u.userId
+       WHERE s.sessionId = ?`
+    )
+    .get(sessionId);
+
   if (!session) return null;
-  
-  // Check if expired
   if (new Date(session.expiresAt) < new Date()) {
     deleteSession(sessionId);
     return null;
   }
-  
+
   return session;
 }
 
 function deleteSession(sessionId) {
-  return db.prepare('DELETE FROM sessions WHERE sessionId = ?').run(sessionId);
-}
-
-function getUserById(userId) {
-  return db.prepare('SELECT userId, username, balance FROM users WHERE userId = ?').get(userId);
+  db.prepare('DELETE FROM sessions WHERE sessionId = ?').run(sessionId);
 }
 
 module.exports = {
@@ -321,7 +268,6 @@ module.exports = {
   removeFromWatchlist,
   saveOrder,
   getOrderHistory,
-  deleteOrder,
   deleteOrderHistoryRecord,
   deleteAllOrders,
   createUser,
@@ -334,3 +280,4 @@ module.exports = {
   deleteSession,
   getUserById
 };
+

@@ -3,8 +3,8 @@ services:
     name: stock-simulator-api
     env: node
     rootDir: server
-    buildCommand: npm install --platform=linux --arch=x64
-    preDeployCommand: npm rebuild better-sqlite3
+    buildCommand: npm ci
+    preDeployCommand: npm rebuild sqlite3
     startCommand: npm start
     envVars:
       - key: JWT_SECRET

@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
-// Database module\nconst db = require('./db_pg');
+const db = require('./db.js');
 
 const app = express();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -570,8 +570,10 @@ async function fetchChartSeries(query, rangeKey = '1d') {
 
 function getUserData(userId = 'default') {
   const user = db.getUser(userId) || { balance: 10000000 };
-  const portfolio = db.getPortfolio(userId);
-  const watchlist = db.getWatchlist(userId);
+
+  // sqlite db.js exposes sync functions
+  const portfolio = db.getPortfolio(userId) || {};
+  const watchlist = db.getWatchlist(userId) || [];
 
   return {
     balance: user.balance,
