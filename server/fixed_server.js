@@ -1295,7 +1295,7 @@ app.delete('/api/orders/:orderId', verifyToken, async (req, res) => {
 });
 
 // Delete/cancel all orders and reverse trades
-app.delete('/api/orders/user/:userId/all', verifyToken, (req, res) => {
+app.delete('/api/orders/user/:userId/all', verifyToken, async (req, res) => {
   try {
     if (req.params.userId !== req.userId) {
       return res.status(403).json({ error: 'Forbidden' });
