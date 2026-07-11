@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment variables (API keys, secrets)
+.env
+.env.local
+.env.*.local
+
+# Client build output
+client/dist/
+
+# Mobile app (separate repo)
+mobile-app/
+
+# SQLite database files (using PostgreSQL now)
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,255 @@
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: var(--bg-body);
+  font-family: var(--font-ui);
+  position: relative;
+}
+
+.auth-bg-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.06;
+}
+
+.auth-shape--1 {
+  width: 500px;
+  height: 500px;
+  background: var(--blue);
+  top: -150px;
+  right: -100px;
+}
+
+.auth-shape--2 {
+  width: 400px;
+  height: 400px;
+  background: var(--orange);
+  bottom: -100px;
+  left: -100px;
+}
+
+.auth-shape--3 {
+  width: 200px;
+  height: 200px;
+  background: var(--blue);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.auth-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+.auth-logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 0;
+}
+
+.auth-logo-img {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 0.8rem;
+  object-fit: contain;
+}
+
+.auth-logo-svg {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 0.8rem;
+}
+
+.auth-brand {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary) !important;
+  text-align: center;
+}
+
+.auth-tagline {
+  text-align: center;
+  color: var(--orange);
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0 0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.8rem;
+}
+
+.auth-container .auth-card .auth-tabs .tab {
+  flex: 1;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-active);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: none;
+}
+
+.auth-container .auth-card .auth-tabs .tab.active {
+  background: var(--blue);
+  color: white;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-form .form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.auth-form .form-group input {
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 0.92rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  transition: all 0.25s ease;
+}
+
+.auth-form .form-group input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.auth-form .form-group input::placeholder {
+  color: var(--text-muted);
+}
+
+.error-message {
+  padding: 10px 14px;
+  background: var(--red-bg);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.submit-btn {
+  padding: 13px 16px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--blue);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.demo-tip {
+  margin-top: 18px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.divider-container {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+  gap: 12px;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-color);
+}
+
+.divider-text {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

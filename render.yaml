@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: stock-simulator
+    env: node
+    rootDir: server
+    buildCommand: cd ../client && npm install && npm run build && cd ../server && npm ci
+    startCommand: npm start
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: MARKET_BROKER
+        value: simulated
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocksim-db
+          property: connectionString
+      - key: CLIENT_URL
+        syncFromBranch: main
+      - key: GOOGLE_CLIENT_ID
+        syncFromBranch: main
+      - key: UPSTOX_API_KEY
+        syncFromBranch: main
+      - key: UPSTOX_API_SECRET
+        syncFromBranch: main
+      - key: UPSTOX_REDIRECT_URI
+        syncFromBranch: main
+      - key: UPSTOX_ACCESS_TOKEN
+        syncFromBranch: main
+
+  - type: postgresql
+    name: stocksim-db
+    plan: free
+    databaseName: stocksim
