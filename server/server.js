@@ -82,55 +82,64 @@ function getStrikeMoneyness(strike, spotPrice, index) {
 
 // Authentication Routes (Public)
 app.post('/api/auth/register', async (req, res) => {
-  const { username, password } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    
+    const user = await db.createUser(username, password);
+    
+    if (!user) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    const token = generateToken(user.userId);
+    res.json({
+      userId: user.userId,
+      username: user.username,
+      balance: user.balance,
+      portfolio: await db.getPortfolio(user.userId) || {},
+      optionsPortfolio: await db.getOptionsPortfolio(user.userId) || {},
+      watchlist: await db.getWatchlist(user.userId) || [],
+      token
+    });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Registration failed' });
   }
-  
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
-  }
-  
-  const user = await db.createUser(username, password);
-  
-  if (!user) {
-    return res.status(400).json({ error: 'Username already exists' });
-  }
-  
-  
-  const token = generateToken(user.userId);
-  res.json({
-    userId: user.userId,
-    username: user.username,
-    balance: user.balance,
-    portfolio: await db.getPortfolio(user.userId) || {},
-    optionsPortfolio: await db.getOptionsPortfolio(user.userId) || {},
-    watchlist: await db.getWatchlist(user.userId) || [],
-    token
-  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
-  const user = await db.verifyUser(username, password);
-  if (!user) {
-    await db.saveLoginHistory(null, username, 'FAILED', getClientIp(req), req.headers['user-agent']);
-    return res.status(401).json({ error: 'Invalid username or password' });
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
+    const user = await db.verifyUser(username, password);
+    if (!user) {
+      db.saveLoginHistory(null, username, 'FAILED', getClientIp(req), req.headers['user-agent']).catch(() => {});
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+    db.saveLoginHistory(user.userId, username, 'SUCCESS', getClientIp(req), req.headers['user-agent']).catch(() => {});
+    
+    const token = generateToken(user.userId);
+    res.json({
+      userId: user.userId,
+      username: user.username,
+      balance: user.balance,
+      portfolio: await db.getPortfolio(user.userId) || {},
+      optionsPortfolio: await db.getOptionsPortfolio(user.userId) || {},
+      watchlist: await db.getWatchlist(user.userId) || [],
+      token
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed' });
   }
-  await db.saveLoginHistory(user.userId, username, 'SUCCESS', getClientIp(req), req.headers['user-agent']);
-  
-  const token = generateToken(user.userId);
-  res.json({
-    userId: user.userId,
-    username: user.username,
-    balance: user.balance,
-    portfolio: await db.getPortfolio(user.userId) || {},
-    optionsPortfolio: await db.getOptionsPortfolio(user.userId) || {},
-    watchlist: await db.getWatchlist(user.userId) || [],
-    token
-  });
 });
 
 app.post('/api/auth/google-token', async (req, res) => {
@@ -994,7 +1003,7 @@ app.post('/api/trade', verifyToken, async (req, res) => {
 // Options Trading Endpoints
 const getLotSize = (index) => (index && index.toUpperCase() === 'SENSEX') ? 20 : 65;
 
-app.post('/api/options/trade', verifyToken, (req, res) => {
+app.post('/api/options/trade', verifyToken, async (req, res) => {
   const { contract, action, quantity, premium, strike, type, index, expiry } = req.body;
   const userId = req.userId;
   const parsedQty = Number(quantity);

@@ -297,10 +297,14 @@ async function getUserById(userId) {
 }
 
 async function saveLoginHistory(userId, username, action, ipAddress, userAgent) {
-  await pool.query(`
-    INSERT INTO login_history (userId, username, action, ipAddress, userAgent, loginTime)
-    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-  `, [userId, username, action, ipAddress || null, userAgent || null]);
+  try {
+    await pool.query(`
+      INSERT INTO login_history (userId, username, action, ipAddress, userAgent, loginTime)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+    `, [userId || 'unknown', username, action, ipAddress || null, userAgent || null]);
+  } catch (err) {
+    console.error('[DB] saveLoginHistory failed:', err.message);
+  }
 }
 
 async function getLoginHistory(userId, limit = 50) {
