@@ -3,7 +3,7 @@ services:
     name: stock-simulator
     env: node
     rootDir: server
-    buildCommand: cd ../client && npm install && npm run build && cd ../server && npm ci
+    buildCommand: cd ../client && npm install --include=dev && npm run build && cd ../server && npm ci
     startCommand: npm start
     envVars:
       - key: JWT_SECRET
