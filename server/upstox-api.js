@@ -418,6 +418,35 @@ function getOptionInstrumentKey(index, strike, type) {
   return `NSE_FO|${indexName}${year}${month}${strike}${type}`;
 }
 
+/**
+ * Refresh a per-user token using their refresh token
+ * Returns new tokens, does NOT touch global state
+ */
+async function refreshUserToken(userRefreshToken) {
+  const params = new URLSearchParams();
+  params.append('refresh_token', userRefreshToken);
+  params.append('client_id', UPSTOX_API_KEY);
+  params.append('client_secret', UPSTOX_API_SECRET);
+  params.append('grant_type', 'refresh_token');
+
+  const response = await axios.post(`${UPSTOX_API_BASE}/login/authorization/token`, params.toString(), {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json'
+    }
+  });
+
+  if (response.data && response.data.access_token) {
+    const jwtExp = decodeJwtExpiry(response.data.access_token);
+    return {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token || userRefreshToken,
+      expiry: jwtExp || (Date.now() + 24 * 60 * 60 * 1000)
+    };
+  }
+  throw new Error('No access token in refresh response');
+}
+
 module.exports = {
   getAuthUrl,
   exchangeCodeForToken,
@@ -427,5 +456,6 @@ module.exports = {
   getOptionsChain,
   getSpotPrice,
   getExpiryDates,
-  getOptionInstrumentKey
+  getOptionInstrumentKey,
+  refreshUserToken
 };

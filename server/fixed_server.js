@@ -205,6 +205,9 @@ app.get('/auth/upstox/callback', async (req, res) => {
   try {
     const tokens = await upstoxApi.exchangeCodeForTokens(code);
 
+    // Set system-level token so background cache refresh works
+    upstoxApi.setAccessToken(tokens.accessToken, tokens.refreshToken);
+
     // If userId was passed in state, save tokens per-user
     if (state) {
       const expiry = tokens.expiry || (Date.now() + 24 * 60 * 60 * 1000);
@@ -1490,6 +1493,31 @@ setInterval(async () => {
     }
   }
 }, 5000);
+
+// Auto-refresh per-user Upstox tokens every 5 minutes
+setInterval(async () => {
+  try {
+    const users = await db.getAllUsersWithUpstoxTokens();
+    const REFRESH_WINDOW = 10 * 60 * 1000; // refresh if expiring within 10 minutes
+
+    for (const user of users) {
+      const needsRefresh = !user.expiry || (user.expiry - Date.now()) < REFRESH_WINDOW;
+      if (!needsRefresh) continue;
+
+      try {
+        const newTokens = await upstoxApi.refreshUserToken(user.refreshToken);
+        await db.saveUpstoxTokens(user.userId, newTokens.accessToken, newTokens.refreshToken, newTokens.expiry);
+        console.log(`[Upstox] Auto-refreshed token for user ${user.userId}`);
+      } catch (err) {
+        console.error(`[Upstox] Auto-refresh failed for user ${user.userId}:`, err.response?.data?.message || err.message);
+        await db.clearUpstoxTokens(user.userId);
+        console.log(`[Upstox] Cleared expired tokens for user ${user.userId}`);
+      }
+    }
+  } catch (err) {
+    console.error('[Upstox] Token refresh scheduler error:', err.message);
+  }
+}, 5 * 60 * 1000);
 
 app.get('/api/market-movers', async (req, res) => {
   try {

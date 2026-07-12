@@ -505,6 +505,17 @@ async function clearUpstoxTokens(userId) {
   `, [userId]);
 }
 
+async function getAllUsersWithUpstoxTokens() {
+  const { rows } = await pool.query(
+    'SELECT "userId", "upstoxRefreshToken", "upstoxTokenExpiry" FROM users WHERE "upstoxRefreshToken" IS NOT NULL'
+  );
+  return rows.map(row => ({
+    userId: row.userId,
+    refreshToken: row.upstoxRefreshToken,
+    expiry: row.upstoxTokenExpiry ? Number(row.upstoxTokenExpiry) : null
+  }));
+}
+
 module.exports = {
   pool,
   initSchema,
@@ -542,5 +553,6 @@ module.exports = {
   createGoogleUser,
   saveUpstoxTokens,
   getUpstoxTokens,
-  clearUpstoxTokens
+  clearUpstoxTokens,
+  getAllUsersWithUpstoxTokens
 };
