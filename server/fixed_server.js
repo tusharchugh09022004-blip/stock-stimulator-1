@@ -22,6 +22,7 @@ let sensexCache = null;
 
 const app = express();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+console.log('[Google Auth] Client ID loaded:', process.env.GOOGLE_CLIENT_ID ? 'YES (length: ' + process.env.GOOGLE_CLIENT_ID.length + ')' : 'NO - MISSING');
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -181,6 +182,7 @@ app.post('/api/auth/google-token', async (req, res) => {
       token
     });
   } catch (err) {
+    console.error('[Google Auth] Verification failed:', err.message);
     res.status(401).json({ error: 'Invalid Google credential' });
   }
 });
