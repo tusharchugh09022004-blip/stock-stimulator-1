@@ -153,7 +153,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/google-token', async (req, res) => {
-  const { credential } = req.body;
+  const credential = req.body.credential || req.body.token;
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
