@@ -16,8 +16,6 @@ const DEFAULT_BALANCE = 10000000;
 async function initSchema() {
   const client = await pool.connect();
   try {
-    await client.query(`DROP TABLE IF EXISTS options_trades CASCADE; DROP TABLE IF EXISTS trades CASCADE; DROP TABLE IF EXISTS login_history CASCADE; DROP TABLE IF EXISTS options_portfolios CASCADE; DROP TABLE IF EXISTS orders CASCADE; DROP TABLE IF EXISTS watchlists CASCADE; DROP TABLE IF EXISTS portfolios CASCADE; DROP TABLE IF EXISTS sessions CASCADE; DROP TABLE IF EXISTS users CASCADE;`);
-
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         "userId" TEXT PRIMARY KEY,
@@ -27,7 +25,11 @@ async function initSchema() {
         "googleId" TEXT,
         email TEXT,
         "createdAt" TEXT DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TEXT DEFAULT CURRENT_TIMESTAMP
+        "updatedAt" TEXT DEFAULT CURRENT_TIMESTAMP,
+        "upstoxAccessToken" TEXT,
+        "upstoxRefreshToken" TEXT,
+        "upstoxTokenExpiry" BIGINT,
+        "upstoxConnectedAt" TEXT
       );
 
       CREATE TABLE IF NOT EXISTS sessions (
