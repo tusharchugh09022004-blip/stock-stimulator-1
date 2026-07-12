@@ -141,6 +141,11 @@ async function initSchema() {
       CREATE INDEX IF NOT EXISTS idx_trades_time ON trades("tradeTime");
     `);
 
+    try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxAccessToken" TEXT`); } catch (_) {}
+    try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxRefreshToken" TEXT`); } catch (_) {}
+    try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxTokenExpiry" BIGINT`); } catch (_) {}
+    try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxConnectedAt" TEXT`); } catch (_) {}
+
     console.log('[DB] Schema initialized successfully');
   } finally {
     client.release();
