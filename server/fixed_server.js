@@ -154,6 +154,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/google-token', async (req, res) => {
   const credential = req.body.credential || req.body.token;
+  console.log('[Google Auth] Received credential:', credential ? `YES (type: ${typeof credential}, length: ${credential.length})` : `NO - body keys: ${Object.keys(req.body || {})}`);
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
