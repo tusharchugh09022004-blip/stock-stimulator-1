@@ -449,7 +449,7 @@ async function createGoogleUser(googleId, email, name) {
 
   try {
     await pool.query(
-      'INSERT INTO users (userId, username, password, balance, googleId, email) VALUES ($1, $2, $3, $4, $5, $6)',
+      'INSERT INTO users ("userId", username, password, balance, "googleId", email) VALUES ($1, $2, $3, $4, $5, $6)',
       [userId, username, hashedPassword, DEFAULT_BALANCE, googleId, email]
     );
     return { userId, username, balance: DEFAULT_BALANCE };
