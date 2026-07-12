@@ -971,10 +971,9 @@ app.delete('/api/watchlist/:userId/:symbol', verifyToken, async (req, res) => {
     }
     
     const userData = await getUserData(userId);
-    const normalizedSymbol = normalizeDisplaySymbol(symbol);
-    const nextWatchlist = (userData.watchlist || []).filter((item) => item.symbol !== normalizedSymbol);
+    const nextWatchlist = (userData.watchlist || []).filter((item) => item.symbol !== symbol);
     // Save to database
-    await db.removeFromWatchlist(userId, normalizedSymbol);
+    await db.removeFromWatchlist(userId, symbol);
 
     const enriched = await enrichWatchlist(nextWatchlist);
     io.emit('watchlistUpdate', { userId, watchlist: enriched });
