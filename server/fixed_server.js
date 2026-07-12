@@ -325,7 +325,8 @@ const MOCK_STOCKS = {
   'ADANIENT.NS': { symbol: 'ADANIENT', yahooSymbol: 'ADANIENT.NS', longName: 'Adani Enterprises Ltd', shortName: 'ADANIENT', exchange: 'NSE', regularMarketPrice: 2850, regularMarketChange: -45, regularMarketChangePercent: -1.56, regularMarketVolume: 15000000 },
   'TATASTEEL.NS': { symbol: 'TATASTEEL', yahooSymbol: 'TATASTEEL.NS', longName: 'Tata Steel Ltd', shortName: 'TATASTEEL', exchange: 'NSE', regularMarketPrice: 150, regularMarketChange: 3, regularMarketChangePercent: 2.04, regularMarketVolume: 25000000 },
   'SUNPHARMA.NS': { symbol: 'SUNPHARMA', yahooSymbol: 'SUNPHARMA.NS', longName: 'Sun Pharmaceutical Industries Ltd', shortName: 'SUNPHARMA', exchange: 'NSE', regularMarketPrice: 1680, regularMarketChange: 12, regularMarketChangePercent: 0.72, regularMarketVolume: 5000000 },
-  'ONGC.NS': { symbol: 'ONGC', yahooSymbol: 'ONGC.NS', longName: 'Oil and Natural Gas Corporation Ltd', shortName: 'ONGC', exchange: 'NSE', regularMarketPrice: 280, regularMarketChange: 5, regularMarketChangePercent: 1.82, regularMarketVolume: 20000000 }
+  'ONGC.NS': { symbol: 'ONGC', yahooSymbol: 'ONGC.NS', longName: 'Oil and Natural Gas Corporation Ltd', shortName: 'ONGC', exchange: 'NSE', regularMarketPrice: 280, regularMarketChange: 5, regularMarketChangePercent: 1.82, regularMarketVolume: 20000000 },
+  'ZOMATO.NS': { symbol: 'ZOMATO', yahooSymbol: 'ZOMATO.NS', longName: 'Zomato Ltd', shortName: 'ZOMATO', exchange: 'NSE', regularMarketPrice: 250, regularMarketChange: 5, regularMarketChangePercent: 2.04, regularMarketVolume: 15000000 }
 };
 
 
