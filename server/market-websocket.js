@@ -2,7 +2,7 @@ const EventEmitter = require('events');
 const WebSocket = require('ws');
 const upstoxApi = require('./upstox-api.js');
 
-const BROKER = (process.env.MARKET_BROKER || 'simulated').toLowerCase();
+const BROKER = (process.env.MARKET_BROKER || 'upstox').toLowerCase();
 const DHAN_API_KEY = process.env.DHAN_API_KEY || '';
 const DHAN_CLIENT_ID = process.env.DHAN_CLIENT_ID || '';
 const UPSTOX_ACCESS_TOKEN = process.env.UPSTOX_ACCESS_TOKEN || '';
@@ -17,17 +17,14 @@ class MarketDataFeed extends EventEmitter {
     this.ws = null;
     this.subscriptions = { NIFTY: [], SENSEX: [] };
     this.reconnectTimer = null;
-    this.simTimer = null;
     this.running = false;
-    this.basePrices = { NIFTY: 24100, SENSEX: 79500 };
-    this.strikePrices = {};
   }
 
   subscribe(index, strikes) {
     const idx = index.toUpperCase();
     if (!this.subscriptions[idx]) this.subscriptions[idx] = [];
     this.subscriptions[idx] = [...new Set([...this.subscriptions[idx], ...strikes])];
-    if (this.running && BROKER !== 'simulated') {
+    if (this.running) {
       this._sendSubscription(idx);
     }
   }
@@ -60,7 +57,7 @@ class MarketDataFeed extends EventEmitter {
         this._connectAngel();
         break;
       default:
-        this._startSimulated();
+        console.warn(`[MarketWS] Unsupported broker '${BROKER}' — live ticks disabled`);
     }
   }
 
@@ -69,10 +66,6 @@ class MarketDataFeed extends EventEmitter {
     if (this.ws) {
       try { this.ws.close(); } catch (_) {}
       this.ws = null;
-    }
-    if (this.simTimer) {
-      clearInterval(this.simTimer);
-      this.simTimer = null;
     }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -249,87 +242,6 @@ class MarketDataFeed extends EventEmitter {
     } catch (err) {
       console.error('[MarketWS] Send error:', err.message);
     }
-  }
-
-  seedStrikePrices(chainData, index) {
-    for (const item of chainData) {
-      if (item.call?.ltp != null) {
-        this.strikePrices[`${index}_${item.strike}_CE`] = item.call.ltp;
-      }
-      if (item.put?.ltp != null) {
-        this.strikePrices[`${index}_${item.strike}_PE`] = item.put.ltp;
-      }
-    }
-    this._pricesStale = true;
-  }
-
-  // ─── Simulated Tick Generator ────────────────────────────────────
-  _startSimulated() {
-    console.log('[MarketWS] Running simulated tick generator');
-    const prices = {};
-    const cachedExtra = {};
-
-    const generateTick = () => {
-      if (this._pricesStale) {
-        Object.keys(prices).forEach(k => delete prices[k]);
-        Object.keys(cachedExtra).forEach(k => delete cachedExtra[k]);
-        this._pricesStale = false;
-      }
-      for (const [index, strikes] of Object.entries(this.subscriptions)) {
-        const base = this.basePrices[index] || 24100;
-        for (const strike of strikes) {
-          for (const type of ['CE', 'PE']) {
-            const key = `${index}_${strike}_${type}`;
-            const realPrice = this.strikePrices[key];
-
-            let ltp;
-            if (realPrice != null) {
-              ltp = realPrice > 0 ? realPrice : 0;
-            } else {
-              const intrinsic = type === 'CE'
-                ? Math.max(0, base - strike)
-                : Math.max(0, strike - base);
-              const distFromSpot = Math.abs(strike - base);
-              const atmTimeValue = base * 0.006;
-              const timeValue = atmTimeValue * Math.exp(-distFromSpot * 0.003);
-              if (prices[key] == null) prices[key] = +(intrinsic + timeValue).toFixed(2);
-              const drift = (Math.random() - 0.495) * 0.4;
-              ltp = Math.max(0.1, +(prices[key] + drift).toFixed(2));
-            }
-
-            const microChange = realPrice != null && realPrice > 0 ? +(ltp - realPrice).toFixed(2) : 0;
-            if (realPrice != null) {
-              if (!cachedExtra[key]) cachedExtra[key] = {};
-              const c = cachedExtra[key];
-              c.oi ??= Math.floor(Math.random() * 100000) + 500000;
-              c.volume ??= Math.floor(Math.random() * 500) + 10;
-              c.bid ??= +Math.max(0, ltp - Math.random() * 2).toFixed(2);
-              c.ask ??= +(ltp + Math.random() * 2).toFixed(2);
-            }
-            const extra = cachedExtra[key] || {};
-            this.emit('tick', {
-              index,
-              strike,
-              type,
-              ltp,
-              change: microChange,
-              oi: extra.oi ?? (Math.floor(Math.random() * 100000) + 500000),
-              volume: extra.volume ?? (Math.floor(Math.random() * 500) + 10),
-              bid: extra.bid ?? (+Math.max(0, ltp - Math.random() * 2).toFixed(2)),
-              ask: extra.ask ?? (+(ltp + Math.random() * 2).toFixed(2)),
-              timestamp: Date.now()
-            });
-          }
-        }
-      }
-    };
-
-    this.simTimer = setInterval(generateTick, 1000);
-  }
-
-  updateBasePrices(bases) {
-    if (bases.NIFTY) this.basePrices.NIFTY = bases.NIFTY;
-    if (bases.SENSEX) this.basePrices.SENSEX = bases.SENSEX;
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────

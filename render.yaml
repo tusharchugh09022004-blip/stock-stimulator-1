@@ -11,7 +11,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: MARKET_BROKER
-        value: simulated
+        value: upstox
       - key: DATABASE_URL
         fromDatabase:
           name: stocksim-db

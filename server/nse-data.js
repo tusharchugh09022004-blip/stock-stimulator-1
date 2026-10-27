@@ -145,7 +145,7 @@ function parseChain(rawData) {
     })
     .sort((a, b) => a.strike - b.strike);
 
-  if (!chain.length) return null;
+  if (!chain.length || !(underlyingValue > 0)) return null;
 
   const dateObj = parseNseDate(targetExpiry);
   const expiryLabel = dateObj
@@ -154,7 +154,7 @@ function parseChain(rawData) {
 
   return {
     chain,
-    spotPrice: underlyingValue || Math.round(chain.reduce((s, r) => s + r.strike, 0) / chain.length),
+    spotPrice: underlyingValue,
     expiry: expiryLabel,
     expiryTimestamp: dateObj ? Math.floor(dateObj.getTime() / 1000) : 0,
     source: 'nse'

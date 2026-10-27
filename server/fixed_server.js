@@ -285,57 +285,6 @@ const CHART_CACHE_TTL = 5 * 60 * 1000;
 let activeChartRequests = 0;
 const MAX_CONCURRENT_CHART_REQUESTS = 2;
 
-const MOCK_INDICES = {
-  '^NSEI': {
-    symbol: '^NSEI',
-    yahooSymbol: '^NSEI',
-    longName: 'Nifty 50',
-    shortName: 'NIFTY',
-    exchange: 'NSE',
-    regularMarketPrice: 24150,
-    regularMarketChange: 85,
-    regularMarketChangePercent: 0.35,
-    regularMarketVolume: 50000000
-  },
-  '^BSESN': {
-    symbol: '^BSESN',
-    yahooSymbol: '^BSESN',
-    longName: 'S&P BSE Sensex',
-    shortName: 'SENSEX',
-    exchange: 'BSE',
-    regularMarketPrice: 79500,
-    regularMarketChange: 320,
-    regularMarketChangePercent: 0.40,
-    regularMarketVolume: 30000000
-  }
-};
-
-const MOCK_STOCKS = {
-  'RELIANCE.NS': { symbol: 'RELIANCE', yahooSymbol: 'RELIANCE.NS', longName: 'Reliance Industries Ltd', shortName: 'RELIANCE', exchange: 'NSE', regularMarketPrice: 2850, regularMarketChange: 45, regularMarketChangePercent: 1.6, regularMarketVolume: 15000000 },
-  'TCS.NS': { symbol: 'TCS', yahooSymbol: 'TCS.NS', longName: 'Tata Consultancy Services Ltd', shortName: 'TCS', exchange: 'NSE', regularMarketPrice: 4120, regularMarketChange: -30, regularMarketChangePercent: -0.72, regularMarketVolume: 8000000 },
-  'HDFCBANK.NS': { symbol: 'HDFCBANK', yahooSymbol: 'HDFCBANK.NS', longName: 'HDFC Bank Ltd', shortName: 'HDFCBANK', exchange: 'NSE', regularMarketPrice: 1680, regularMarketChange: 25, regularMarketChangePercent: 1.5, regularMarketVolume: 12000000 },
-  'INFY.NS': { symbol: 'INFY', yahooSymbol: 'INFY.NS', longName: 'Infosys Ltd', shortName: 'INFY', exchange: 'NSE', regularMarketPrice: 1520, regularMarketChange: -15, regularMarketChangePercent: -0.98, regularMarketVolume: 10000000 },
-  'ICICIBANK.NS': { symbol: 'ICICIBANK', yahooSymbol: 'ICICIBANK.NS', longName: 'ICICI Bank Ltd', shortName: 'ICICIBANK', exchange: 'NSE', regularMarketPrice: 1080, regularMarketChange: 18, regularMarketChangePercent: 1.7, regularMarketVolume: 18000000 },
-  'SBIN.NS': { symbol: 'SBIN', yahooSymbol: 'SBIN.NS', longName: 'State Bank of India', shortName: 'SBIN', exchange: 'NSE', regularMarketPrice: 780, regularMarketChange: 12, regularMarketChangePercent: 1.56, regularMarketVolume: 25000000 },
-  'BHARTIARTL.NS': { symbol: 'BHARTIARTL', yahooSymbol: 'BHARTIARTL.NS', longName: 'Bharti Airtel Ltd', shortName: 'BHARTIARTL', exchange: 'NSE', regularMarketPrice: 1350, regularMarketChange: -8, regularMarketChangePercent: -0.59, regularMarketVolume: 9000000 },
-  'ITC.NS': { symbol: 'ITC', yahooSymbol: 'ITC.NS', longName: 'ITC Ltd', shortName: 'ITC', exchange: 'NSE', regularMarketPrice: 450, regularMarketChange: 5, regularMarketChangePercent: 1.12, regularMarketVolume: 20000000 },
-  'LICI.NS': { symbol: 'LICI', yahooSymbol: 'LICI.NS', longName: 'Life Insurance Corporation of India', shortName: 'LICI', exchange: 'NSE', regularMarketPrice: 920, regularMarketChange: 15, regularMarketChangePercent: 1.66, regularMarketVolume: 8000000 },
-  'HINDUNILVR.NS': { symbol: 'HINDUNILVR', yahooSymbol: 'HINDUNILVR.NS', longName: 'Hindustan Unilever Ltd', shortName: 'HINDUNILVR', exchange: 'NSE', regularMarketPrice: 2450, regularMarketChange: -20, regularMarketChangePercent: -0.81, regularMarketVolume: 6000000 },
-  'AXISBANK.NS': { symbol: 'AXISBANK', yahooSymbol: 'AXISBANK.NS', longName: 'Axis Bank Ltd', shortName: 'AXISBANK', exchange: 'NSE', regularMarketPrice: 1120, regularMarketChange: 8, regularMarketChangePercent: 0.72, regularMarketVolume: 11000000 },
-  'KOTAKBANK.NS': { symbol: 'KOTAKBANK', yahooSymbol: 'KOTAKBANK.NS', longName: 'Kotak Mahindra Bank Ltd', shortName: 'KOTAKBANK', exchange: 'NSE', regularMarketPrice: 1780, regularMarketChange: -12, regularMarketChangePercent: -0.67, regularMarketVolume: 7000000 },
-  'LT.NS': { symbol: 'LT', yahooSymbol: 'LT.NS', longName: 'Larsen & Toubro Ltd', shortName: 'LT', exchange: 'NSE', regularMarketPrice: 3650, regularMarketChange: 35, regularMarketChangePercent: 0.97, regularMarketVolume: 5000000 },
-  'WIPRO.NS': { symbol: 'WIPRO', yahooSymbol: 'WIPRO.NS', longName: 'Wipro Ltd', shortName: 'WIPRO', exchange: 'NSE', regularMarketPrice: 480, regularMarketChange: 3, regularMarketChangePercent: 0.63, regularMarketVolume: 9000000 },
-  'TATAMOTORS.NS': { symbol: 'TATAMOTORS', yahooSymbol: 'TATAMOTORS.NS', longName: 'Tata Motors Ltd', shortName: 'TATAMOTORS', exchange: 'NSE', regularMarketPrice: 920, regularMarketChange: 18, regularMarketChangePercent: 2.0, regularMarketVolume: 12000000 },
-  'MARUTI.NS': { symbol: 'MARUTI', yahooSymbol: 'MARUTI.NS', longName: 'Maruti Suzuki India Ltd', shortName: 'MARUTI', exchange: 'NSE', regularMarketPrice: 12400, regularMarketChange: -80, regularMarketChangePercent: -0.64, regularMarketVolume: 3000000 },
-  'BAJFINANCE.NS': { symbol: 'BAJFINANCE', yahooSymbol: 'BAJFINANCE.NS', longName: 'Bajaj Finance Ltd', shortName: 'BAJFINANCE', exchange: 'NSE', regularMarketPrice: 7200, regularMarketChange: 50, regularMarketChangePercent: 0.7, regularMarketVolume: 4000000 },
-  'ADANIENT.NS': { symbol: 'ADANIENT', yahooSymbol: 'ADANIENT.NS', longName: 'Adani Enterprises Ltd', shortName: 'ADANIENT', exchange: 'NSE', regularMarketPrice: 2850, regularMarketChange: -45, regularMarketChangePercent: -1.56, regularMarketVolume: 15000000 },
-  'TATASTEEL.NS': { symbol: 'TATASTEEL', yahooSymbol: 'TATASTEEL.NS', longName: 'Tata Steel Ltd', shortName: 'TATASTEEL', exchange: 'NSE', regularMarketPrice: 150, regularMarketChange: 3, regularMarketChangePercent: 2.04, regularMarketVolume: 25000000 },
-  'SUNPHARMA.NS': { symbol: 'SUNPHARMA', yahooSymbol: 'SUNPHARMA.NS', longName: 'Sun Pharmaceutical Industries Ltd', shortName: 'SUNPHARMA', exchange: 'NSE', regularMarketPrice: 1680, regularMarketChange: 12, regularMarketChangePercent: 0.72, regularMarketVolume: 5000000 },
-  'ONGC.NS': { symbol: 'ONGC', yahooSymbol: 'ONGC.NS', longName: 'Oil and Natural Gas Corporation Ltd', shortName: 'ONGC', exchange: 'NSE', regularMarketPrice: 280, regularMarketChange: 5, regularMarketChangePercent: 1.82, regularMarketVolume: 20000000 },
-  'ZOMATO.NS': { symbol: 'ZOMATO', yahooSymbol: 'ZOMATO.NS', longName: 'Zomato Ltd', shortName: 'ZOMATO', exchange: 'NSE', regularMarketPrice: 250, regularMarketChange: 5, regularMarketChangePercent: 2.04, regularMarketVolume: 15000000 }
-};
-
-
 async function waitForSlot() {
   while (activeRequests >= MAX_CONCURRENT_REQUESTS) {
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -427,178 +376,76 @@ function buildChartResponse(symbol, points, meta = {}) {
   };
 }
 
-function generateFallbackChartSeries(symbol, range) {
-  const { points: pointCount } = getChartRangeConfig(range);
-  const now = Date.now();
-  const stepMs = range === '1d' ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000;
-  const upperSymbol = String(symbol || '').toUpperCase();
-  let basePrice = 1200;
-
-  if (upperSymbol.includes('NSEI') || upperSymbol.includes('NIFTY')) basePrice = 24100;
-  if (upperSymbol.includes('BSESN') || upperSymbol.includes('SENSEX')) basePrice = 80000;
-
-  const points = Array.from({ length: pointCount }, (_, index) => {
-    const date = new Date(now - (pointCount - index - 1) * stepMs);
-    const drift = Math.sin(index / 5) * basePrice * 0.002;
-    const noise = (Math.random() - 0.5) * basePrice * 0.0015;
-    const close = Math.max(1, basePrice + drift + noise);
-    const open = Math.max(1, close - (Math.random() - 0.5) * basePrice * 0.001);
-    const high = Math.max(open, close) + Math.random() * basePrice * 0.001;
-    const low = Math.min(open, close) - Math.random() * basePrice * 0.001;
-
-    return {
-      date,
-      label: formatChartLabel(date, range),
-      open,
-      high,
-      low,
-      close,
-      volume: 0,
-      adjclose: close
-    };
-  });
-
-  return buildChartResponse(symbol, points);
-}
-
 async function fetchQuoteDirect(symbol) {
-  const query = normalizeYahooSymbol(symbol);
-  const encoded = encodeURIComponent(query);
-  const res = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${encoded}`, {
+  const query = encodeURIComponent(normalizeYahooSymbol(symbol));
+  const response = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${query}`, {
     params: { range: '1d', interval: '1d' },
     timeout: 8000,
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    headers: { 'User-Agent': 'Mozilla/5.0' }
   });
-  const meta = res.data?.chart?.result?.[0]?.meta;
-  if (!meta) throw new Error('No chart meta data');
-  const quotes = res.data?.chart?.result?.[0]?.indicators?.quote?.[0];
-  const close = quotes?.close?.find(c => c != null);
-  const prevClose = meta.chartPreviousClose || meta.previousClose || 0;
-  const price = meta.regularMarketPrice || close || 0;
+  const result = response.data?.chart?.result?.[0];
+  const meta = result?.meta;
+  if (!meta) throw new Error('No live quote data returned');
+  const quotes = result.indicators?.quote?.[0] || {};
+  const previousClose = meta.chartPreviousClose || meta.previousClose;
+  const price = meta.regularMarketPrice || quotes.close?.find(value => value != null);
+  if (!(price > 0) || !(previousClose > 0)) throw new Error('Live quote is incomplete');
   return {
     symbol,
     yahooSymbol: meta.symbol,
-    longName: meta.symbol,
-    shortName: meta.symbol,
-    exchange: 'NSE',
+    longName: meta.longName || meta.symbol,
+    shortName: meta.shortName || meta.symbol,
+    exchange: meta.exchangeName || '',
     regularMarketPrice: price,
-    regularMarketChange: price - prevClose,
-    regularMarketChangePercent: prevClose ? ((price - prevClose) / prevClose) * 100 : 0,
-    regularMarketVolume: quotes?.volume?.reduce((a, b) => a + (b || 0), 0) || 0
+    regularMarketChange: price - previousClose,
+    regularMarketChangePercent: ((price - previousClose) / previousClose) * 100,
+    regularMarketVolume: quotes.volume?.reduce((sum, value) => sum + (value || 0), 0) || 0
   };
 }
 
 async function resolveQuote(symbol) {
+  const cached = getCachedQuote(symbol);
+  if (cached) return cached;
+
+  await waitForSlot();
+  activeRequests++;
+  let providerError;
   try {
-    const cached = getCachedQuote(symbol);
-    if (cached) return cached;
-
-    await waitForSlot();
-    activeRequests++;
-
     try {
       const yahooFinance = await getYahooFinance();
-      const query = normalizeYahooSymbol(symbol);
-
-      let retries = 3;
-      let lastError;
-
-      while (retries > 0) {
-        try {
-          const result = await Promise.race([
-            yahooFinance.quote(query),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
-          ]);
-          const quote = {
-            symbol,
-            yahooSymbol: result.symbol,
-            longName: result.longName,
-            shortName: result.shortName,
-            exchange: result.exchange,
-            regularMarketPrice: result.regularMarketPrice || 0,
-            regularMarketChange: result.regularMarketChange || 0,
-            regularMarketChangePercent: result.regularMarketChangePercent || 0,
-            regularMarketVolume: result.regularMarketVolume || 0
-          };
-          setCachedQuote(symbol, quote);
-          return quote;
-        } catch (err) {
-          lastError = err;
-          if (err.message?.includes('429') || err.message?.includes('Too Many Requests')) {
-            retries--;
-            if (retries > 0) {
-              const delay = Math.pow(2, 3 - retries) * 1000;
-              await new Promise(resolve => setTimeout(resolve, delay));
-            }
-          } else {
-            throw err;
-          }
-        }
-      }
-
-      if (MOCK_INDICES[query] || MOCK_INDICES[symbol]) {
-        console.log('Using fallback mock data for index', symbol);
-        const fallback = MOCK_INDICES[query] || MOCK_INDICES[symbol];
-        setCachedQuote(symbol, fallback);
-        return fallback;
-      }
-      if (MOCK_STOCKS[query] || MOCK_STOCKS[symbol]) {
-        console.log('Using fallback mock data for stock', symbol);
-        const fallback = MOCK_STOCKS[query] || MOCK_STOCKS[symbol];
-        setCachedQuote(symbol, fallback);
-        return fallback;
-      }
-      throw lastError || new Error('Failed to fetch quote after retries');
-    } finally {
-      activeRequests--;
+      const result = await Promise.race([
+        yahooFinance.quote(normalizeYahooSymbol(symbol)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Yahoo quote timed out')), 12000))
+      ]);
+      if (!(result?.regularMarketPrice > 0)) throw new Error('Yahoo returned no live price');
+      const quote = {
+        symbol,
+        yahooSymbol: result.symbol,
+        longName: result.longName,
+        shortName: result.shortName,
+        exchange: result.exchange,
+        regularMarketPrice: result.regularMarketPrice,
+        regularMarketChange: result.regularMarketChange,
+        regularMarketChangePercent: result.regularMarketChangePercent,
+        regularMarketVolume: result.regularMarketVolume
+      };
+      setCachedQuote(symbol, quote);
+      return quote;
+    } catch (err) {
+      providerError = err;
+      console.error('yahoo-finance2 failed for', symbol, err.message);
     }
+  } finally {
+    activeRequests--;
+  }
+
+  try {
+    const quote = await fetchQuoteDirect(symbol);
+    setCachedQuote(symbol, quote);
+    return quote;
   } catch (err) {
-    console.error('yahoo-finance2 failed for', symbol, err.message);
-
-    // Try direct HTTP fallback (bypasses GDPR consent)
-    try {
-      const result = await fetchQuoteDirect(symbol);
-      setCachedQuote(symbol, result);
-      console.log('Direct HTTP quote succeeded for', symbol);
-      return result;
-    } catch (directErr) {
-      console.error('Direct HTTP quote also failed for', symbol, directErr.message);
-    }
-
-    const query = normalizeYahooSymbol(symbol);
-
-    if (MOCK_INDICES[query] || MOCK_INDICES[symbol]) {
-      const fallback = MOCK_INDICES[query] || MOCK_INDICES[symbol];
-      setCachedQuote(symbol, fallback);
-      return fallback;
-    }
-    if (MOCK_STOCKS[query] || MOCK_STOCKS[symbol]) {
-      const fallback = MOCK_STOCKS[query] || MOCK_STOCKS[symbol];
-      setCachedQuote(symbol, fallback);
-      return fallback;
-    }
-
-    const upperSymbol = String(symbol || '').toUpperCase();
-    const basePrice = upperSymbol.includes('NSEI') || upperSymbol.includes('NIFTY') ? 24100 :
-      upperSymbol.includes('BSESN') || upperSymbol.includes('SENSEX') ? 80000 : 1200;
-
-    const delta = (Math.random() - 0.5) * (basePrice * 0.01);
-    const price = Math.max(1, basePrice + delta);
-    const changePercent = delta ? (delta / (price - delta)) * 100 : (Math.random() - 0.5) * 2;
-
-    const fallback = {
-      symbol,
-      yahooSymbol: normalizeYahooSymbol(symbol),
-      longName: symbol,
-      shortName: symbol,
-      exchange: 'NSE',
-      regularMarketPrice: price,
-      regularMarketChange: delta,
-      regularMarketChangePercent: changePercent,
-      regularMarketVolume: Math.floor(Math.random() * 10000000)
-    };
-    setCachedQuote(symbol, fallback);
-    return fallback;
+    console.error('Direct Yahoo quote failed for', symbol, err.message);
+    throw new Error(`Live quote unavailable for ${symbol}: ${err.message || providerError?.message}`);
   }
 }
 
@@ -649,9 +496,7 @@ async function fetchChartSeriesUncached(symbol, range = '1d') {
       const quotes = result?.indicators?.quote?.[0] || {};
       const adjClose = result?.indicators?.adjclose?.[0]?.adjclose || [];
       
-      if (!timestamps.length) {
-        return generateFallbackChartSeries(symbol, range);
-      }
+      if (!timestamps.length) throw new Error(`No live chart data returned for ${symbol}`);
 
       const points = timestamps
         .map((timestamp, index) => ({
@@ -673,76 +518,14 @@ async function fetchChartSeriesUncached(symbol, range = '1d') {
       });
     } catch (err) {
       console.error('Yahoo chart request failed for', symbol, err.message);
-      return generateFallbackChartSeries(symbol, range);
+      throw err;
     } finally {
       activeChartRequests--;
     }
   } catch (err) {
     console.error('Error fetching chart for', symbol, err.message);
-    return generateFallbackChartSeries(symbol, range);
+    throw err;
   }
-}
-
-// Generate mock options chain for indices
-function seededRandom(seed) {
-  let s = Math.abs(seed | 0) + 1;
-  return function () {
-    s = (s * 1664525 + 1013904223) & 0x7FFFFFFF;
-    return s / 0x7FFFFFFF;
-  };
-}
-
-function generateOptionsChain(basePrice, strikes = 13, index = 'NIFTY', expiryTimestamp = 0) {
-  const chain = [];
-  const step = index.toUpperCase() === 'SENSEX' ? 100 : 50;
-  const roundedBase = Math.round(basePrice / step) * step;
-  const halfStrikes = Math.floor(strikes / 2);
-  const weeksToExpiry = expiryTimestamp > 0
-    ? Math.max(0.5, (expiryTimestamp - Date.now() / 1000) / (7 * 86400))
-    : 1;
-  const tValuePct = index.toUpperCase() === 'SENSEX' ? 0.0044 : 0.006;
-  const baseTimeValue = basePrice * tValuePct * Math.sqrt(weeksToExpiry);
-  const decayLambda = index.toUpperCase() === 'SENSEX' ? 250 : 300;
-
-  for (let i = -halfStrikes; i <= halfStrikes; i++) {
-    const strike = roundedBase + (i * step);
-    const distFromSpot = Math.abs(strike - basePrice);
-    const isATM = distFromSpot < step;
-    const rng = seededRandom(expiryTimestamp + strike);
-
-    const callIntrinsic = Math.max(0, basePrice - strike);
-    const putIntrinsic = Math.max(0, strike - basePrice);
-
-    const timeDecay = Math.exp(-distFromSpot / decayLambda);
-
-    const callLtp = +(callIntrinsic + baseTimeValue * timeDecay).toFixed(2);
-    const putLtp = +(putIntrinsic + baseTimeValue * timeDecay).toFixed(2);
-
-    chain.push({
-      strike,
-      call: {
-        oi: Math.floor(rng() * 5000000) + 500000,
-        ltp: callLtp,
-        iv: (15 + rng() * 15).toFixed(2),
-        volume: Math.floor(rng() * 100000) + 10000,
-        change: (rng() * 10 - 5).toFixed(2),
-        bid: +(callLtp * 0.95).toFixed(2),
-        ask: +(callLtp * 1.05).toFixed(2)
-      },
-      put: {
-        oi: Math.floor(rng() * 5000000) + 500000,
-        ltp: putLtp,
-        iv: (15 + rng() * 15).toFixed(2),
-        volume: Math.floor(rng() * 100000) + 10000,
-        change: (rng() * 10 - 5).toFixed(2),
-        bid: +(putLtp * 0.95).toFixed(2),
-        ask: +(putLtp * 1.05).toFixed(2)
-      },
-      isATM
-    });
-  }
-
-  return chain;
 }
 
 async function enrichWatchlist(items = []) {
@@ -759,14 +542,8 @@ async function enrichWatchlist(items = []) {
           regularMarketChangePercent: quote.regularMarketChangePercent
         };
       } catch (err) {
-        return {
-          symbol: item.symbol,
-          yahooSymbol: item.yahooSymbol || item.symbol,
-          name: item.name || item.symbol,
-          exchange: item.exchange || '',
-          regularMarketPrice: 0,
-          regularMarketChangePercent: 0
-        };
+        console.warn(`Watchlist quote unavailable for ${item.symbol}: ${err.message}`);
+        return null;
       }
     })
   );
@@ -777,19 +554,7 @@ app.get('/api/quote/:symbol', async (req, res) => {
     const quote = await resolveQuote(req.params.symbol);
     res.json(quote);
   } catch (err) {
-    // Last-resort fallback so UI doesn't break.
-    const symbol = req.params.symbol;
-    res.json({
-      symbol,
-      yahooSymbol: normalizeYahooSymbol(symbol),
-      longName: symbol,
-      shortName: symbol,
-      exchange: 'NSE',
-      regularMarketPrice: 0,
-      regularMarketChange: 0,
-      regularMarketChangePercent: 0,
-      regularMarketVolume: 0
-    });
+    res.status(503).json({ error: 'Live quote unavailable', detail: err.message });
   }
 });
 
@@ -957,7 +722,7 @@ app.get('/api/chart/:symbol', async (req, res) => {
     const chart = await fetchChartSeries(req.params.symbol, range);
     res.json(chart);
   } catch (err) {
-    res.status(404).json({ error: err.message });
+    res.status(503).json({ error: 'Live chart data unavailable', detail: err.message });
   }
 });
 
@@ -973,7 +738,7 @@ app.get('/api/watchlist/:userId', verifyToken, async (req, res) => {
     
     const userId = req.userId;
     const userData = await getUserData(userId);
-    const enriched = await enrichWatchlist(userData.watchlist || []);
+    const enriched = (await enrichWatchlist(userData.watchlist || [])).filter(Boolean);
     res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1001,7 +766,7 @@ app.post('/api/watchlist', verifyToken, async (req, res) => {
       await db.addToWatchlist(userId, quote.symbol, quote.yahooSymbol, quote.longName || quote.shortName || quote.symbol, quote.exchange);
     }
 
-    const enriched = await enrichWatchlist(nextWatchlist);
+    const enriched = (await enrichWatchlist(nextWatchlist)).filter(Boolean);
     io.emit('watchlistUpdate', { userId, watchlist: enriched });
     res.json(enriched);
   } catch (err) {
@@ -1023,7 +788,7 @@ app.delete('/api/watchlist/:userId/:symbol', verifyToken, async (req, res) => {
     // Save to database
     await db.removeFromWatchlist(userId, symbol);
 
-    const enriched = await enrichWatchlist(nextWatchlist);
+    const enriched = (await enrichWatchlist(nextWatchlist)).filter(Boolean);
     io.emit('watchlistUpdate', { userId, watchlist: enriched });
     res.json(enriched);
   } catch (err) {
@@ -1485,17 +1250,9 @@ async function updateCacheFromUpstox() {
     ]);
     if (niftyData?.chain?.length) {
       nseCache = { data: niftyData, timestamp: Date.now() };
-      marketFeed.seedStrikePrices(niftyData.chain, 'NIFTY');
     }
     if (sensexData?.chain?.length) {
       sensexCache = { data: sensexData, timestamp: Date.now() };
-      marketFeed.seedStrikePrices(sensexData.chain, 'SENSEX');
-    }
-    if (niftyData?.spotPrice || sensexData?.spotPrice) {
-      marketFeed.updateBasePrices({
-        NIFTY: niftyData?.spotPrice,
-        SENSEX: sensexData?.spotPrice
-      });
     }
     return !!(niftyData?.chain?.length || sensexData?.chain?.length);
   } catch (_) { return false; }
@@ -1506,18 +1263,6 @@ updateCacheFromUpstox().then(ok => {
   if (!ok) {
     nseData.warmSession().then(async () => {
       await updateNseCache();
-      const niftySpot = nseCache?.data?.spotPrice || await getSpotPriceForIndex('NIFTY').catch(() => 24100);
-      marketFeed.updateBasePrices({ NIFTY: niftySpot });
-      if (nseCache?.data?.chain?.length) {
-        marketFeed.seedStrikePrices(nseCache.data.chain, 'NIFTY');
-      } else {
-        const mockChain = generateOptionsChain(niftySpot, 31, 'NIFTY', Math.floor(Date.now() / 1000));
-        marketFeed.seedStrikePrices(mockChain, 'NIFTY');
-      }
-      await updateSensexCache();
-      if (sensexCache?.data?.chain?.length) {
-        marketFeed.seedStrikePrices(sensexCache.data.chain, 'SENSEX');
-      }
     });
   }
 });
@@ -1526,18 +1271,6 @@ setInterval(async () => {
   if (!(await updateCacheFromUpstox())) {
     nseData.warmSession();
     await updateNseCache();
-    const niftySpot = nseCache?.data?.spotPrice || await getSpotPriceForIndex('NIFTY').catch(() => 24100);
-    marketFeed.updateBasePrices({ NIFTY: niftySpot });
-    if (nseCache?.data?.chain?.length) {
-      marketFeed.seedStrikePrices(nseCache.data.chain, 'NIFTY');
-    } else {
-      const mockChain = generateOptionsChain(niftySpot, 31, 'NIFTY', Math.floor(Date.now() / 1000));
-      marketFeed.seedStrikePrices(mockChain, 'NIFTY');
-    }
-    await updateSensexCache();
-    if (sensexCache?.data?.chain?.length) {
-      marketFeed.seedStrikePrices(sensexCache.data.chain, 'SENSEX');
-    }
   }
 }, 5000);
 
@@ -1614,9 +1347,10 @@ function getIndexSymbol(index) {
 async function getSpotPriceForIndex(index) {
   try {
     const quote = await resolveQuote(getIndexSymbol(index));
-    return quote.regularMarketPrice || (index.toUpperCase() === 'SENSEX' ? 80000 : 24100);
-  } catch {
-    return index.toUpperCase() === 'SENSEX' ? 80000 : 24100;
+    if (!quote.regularMarketPrice) throw new Error(`No live spot price for ${index}`);
+    return quote.regularMarketPrice;
+  } catch (err) {
+    throw new Error(`Live spot price unavailable for ${index}: ${err.message}`);
   }
 }
 
@@ -1628,7 +1362,7 @@ async function updateNseCache() {
       nseCache = {
         data: {
           chain: result.chain,
-          spotPrice: result.spotPrice || spotPrice,
+          spotPrice: result.spotPrice,
           expiry: result.expiry || '',
           expiryTimestamp: result.expiryTimestamp || 0
         },
@@ -1641,39 +1375,7 @@ async function updateNseCache() {
   }
 }
 
-async function updateSensexCache() {
-  try {
-    const expiry = generateFallbackExpiries(8, 'SENSEX')[0];
-    const sensexSpot = await getSpotPriceForIndex('SENSEX');
-    const chain = generateOptionsChain(sensexSpot, 31, 'SENSEX', expiry.timestamp);
-    sensexCache = {
-      data: { chain, spotPrice: sensexSpot, expiry: expiry.date, expiryTimestamp: expiry.timestamp },
-      timestamp: Date.now()
-    };
-  } catch (err) {
-    console.log('[SENSEX] Cache update failed:', err.message);
-  }
-}
-
-function generateFallbackExpiries(weeks = 8, index = 'NIFTY') {
-  const now = new Date();
-  const expiries = [];
-  let d = new Date(now);
-  const expiryDay = index.toUpperCase() === 'SENSEX' ? 4 : 2; // Sensex Thu, Nifty Tue
-  while (d.getDay() !== expiryDay) d.setDate(d.getDate() + 1);
-  for (let i = 0; i < weeks; i++) {
-    const ts = Math.floor(d.getTime() / 1000);
-    expiries.push({
-      timestamp: ts,
-      date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      label: d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
-    });
-    d.setDate(d.getDate() + 7);
-  }
-  return expiries;
-}
-
-// Get available expiration dates (Upstox first, fallback to generated)
+// Get available expiration dates from Upstox
 app.get('/api/options/expiries/:index', async (req, res) => {
   try {
     // Try per-user token first
@@ -1686,11 +1388,13 @@ app.get('/api/options/expiries/:index', async (req, res) => {
     if (upstoxExpiries && upstoxExpiries.length > 0) {
       return res.json(upstoxExpiries);
     }
-  } catch (_) {}
-  res.json(generateFallbackExpiries(8, req.params.index));
+  } catch (err) {
+    return res.status(503).json({ error: 'Live option expiries unavailable', detail: err.message });
+  }
+  return res.status(503).json({ error: 'Live option expiries unavailable' });
 });
 
-// Options Chain Endpoint (Upstox first, then cached NSE/mock fallback)
+// Options Chain Endpoint (authenticated Upstox, or fresh NSE data for NIFTY)
 app.get('/api/options/chain/:index', async (req, res) => {
   try {
     const { index } = req.params;
@@ -1710,12 +1414,11 @@ app.get('/api/options/chain/:index', async (req, res) => {
       if (tokenToUse) {
         const upstoxData = await upstoxApi.getOptionsChain(index, expiryTimestamp, userToken);
         if (upstoxData && upstoxData.chain && upstoxData.chain.length > 0) {
-          const fallbackExpiries = generateFallbackExpiries(8, idx);
+          const expiry = upstoxData.expiry || '';
           return res.json({
             index,
             spot: upstoxData.spotPrice,
-            expiry: fallbackExpiries[0].date,
-            expiryTimestamp: fallbackExpiries[0].timestamp,
+            expiry,
             chain: upstoxData.chain,
             source: 'upstox'
           });
@@ -1726,50 +1429,17 @@ app.get('/api/options/chain/:index', async (req, res) => {
       if (err.response?.data) console.log('[Upstox] API response:', JSON.stringify(err.response.data));
     }
 
-    const spotPrice = await getSpotPriceForIndex(index);
-    const fallbackExpiries = generateFallbackExpiries(8, idx);
-
-    let expiry = fallbackExpiries[0].date;
-    let resolvedExpiryTimestamp = fallbackExpiries[0].timestamp;
-    if (expiryTimestamp) {
-      const match = fallbackExpiries.find(e => e.timestamp === expiryTimestamp);
-      if (match) {
-        expiry = match.date;
-        resolvedExpiryTimestamp = match.timestamp;
-      }
-    }
-
-    if (idx === 'NIFTY' && nseCache) {
+    if (idx === 'NIFTY' && nseCache?.data?.chain?.length && Date.now() - nseCache.timestamp < 30000) {
       return res.json({
         index,
-        spot: nseCache.data.spotPrice || spotPrice,
-        expiry: nseCache.data.expiry || expiry,
-        expiryTimestamp: nseCache.data.expiryTimestamp || resolvedExpiryTimestamp,
+        spot: nseCache.data.spotPrice,
+        expiry: nseCache.data.expiry,
+        expiryTimestamp: nseCache.data.expiryTimestamp,
         chain: JSON.parse(JSON.stringify(nseCache.data.chain)),
         source: 'nse'
       });
     }
-
-    if (idx === 'SENSEX' && sensexCache) {
-      return res.json({
-        index,
-        spot: sensexCache.data.spotPrice || spotPrice,
-        expiry: sensexCache.data.expiry || expiry,
-        expiryTimestamp: sensexCache.data.expiryTimestamp || resolvedExpiryTimestamp,
-        chain: JSON.parse(JSON.stringify(sensexCache.data.chain)),
-        source: 'mock'
-      });
-    }
-
-    const chain = generateOptionsChain(spotPrice, 31, index, resolvedExpiryTimestamp);
-    res.json({
-      index,
-      spot: spotPrice,
-      expiry,
-      expiryTimestamp: resolvedExpiryTimestamp,
-      chain,
-      source: 'mock'
-    });
+    return res.status(503).json({ error: `Live ${idx} option chain unavailable` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1817,27 +1487,7 @@ app.get('/api/options/quote/:index/:strike/:type', async (req, res) => {
       }
     } catch (_) {}
     
-    const spotPrice = await getSpotPriceForIndex(index);
-    
-    const intrinsicValue = type.toUpperCase() === 'CALL' 
-      ? Math.max(0, spotPrice - strikeNum)
-      : Math.max(0, strikeNum - spotPrice);
-    
-    const timeValue = Math.random() * 50 + 20;
-    const premium = intrinsicValue + timeValue;
-    
-    res.json({
-      index,
-      strike: strikeNum,
-      type,
-      spot: spotPrice,
-      premium: premium.toFixed(2),
-      intrinsic: intrinsicValue.toFixed(2),
-      timeValue: timeValue.toFixed(2),
-      iv: (15 + Math.random() * 15).toFixed(2),
-      oi: Math.floor(Math.random() * 5000000) + 500000,
-      volume: Math.floor(Math.random() * 100000) + 10000
-    });
+    return res.status(503).json({ error: 'Live option quote unavailable' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

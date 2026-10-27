@@ -16,30 +16,6 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2
   })}`;
 
-// Mock chart data generator
-const generateChartData = (basePrice, points = 100) => {
-  const data = [];
-  let price = basePrice;
-  const now = new Date();
-  
-  for (let i = points; i >= 0; i--) {
-    const time = new Date(now - i * 60000); // 1 minute intervals
-    const change = (Math.random() - 0.5) * (basePrice * 0.002);
-    price = Math.max(1, price + change);
-    
-    data.push({
-      time: time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      open: price,
-      high: price + Math.random() * (basePrice * 0.001),
-      low: price - Math.random() * (basePrice * 0.001),
-      close: price + (Math.random() - 0.5) * (basePrice * 0.0005),
-      volume: Math.floor(Math.random() * 1000) + 100
-    });
-  }
-  
-  return data;
-};
-
 // Calculate technical indicators
 const calculateEMA = (data, period) => {
   const ema = [];
@@ -132,12 +108,11 @@ export default function OptionChart({ optionData }) {
   ];
 
   useEffect(() => {
-    const basePrice = optionData?.ltp || 100;
-    setChartData(generateChartData(basePrice));
+    setChartData(Array.isArray(optionData?.history) ? optionData.history : []);
   }, [optionData, interval]);
 
   const emaData = useMemo(() => calculateEMA(chartData, 9), [chartData]);
-  const vwapData = useMemo(() => calculateVWAP(chartData), [chartData]);
+  const vwapData = useMemo(() => chartData.length ? calculateVWAP(chartData) : [], [chartData]);
   const rsiData = useMemo(() => calculateRSI(chartData, 14), [chartData]);
 
   const chartWithIndicators = chartData.map((point, i) => ({
@@ -151,6 +126,7 @@ export default function OptionChart({ optionData }) {
 
   return (
     <div className="option-chart-container">
+      {chartData.length === 0 && <p>Live option chart history unavailable.</p>}
       <div className="chart-controls">
         <div className="interval-selector">
           {intervals.map((int) => (

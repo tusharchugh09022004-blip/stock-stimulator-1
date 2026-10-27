@@ -18,47 +18,33 @@ export default function OptionContractPage({ contractData, onBack, onTrade }) {
 
   const rawQty = Math.max(1, parseInt(quantity) || 0);
 
-  // Generate mock chart data
-  const generateChartData = () => {
-    const data = [];
-    const basePrice = premium;
-    for (let i = 0; i < 50; i++) {
-      data.push({
-        time: `${i * 5}m`,
-        close: basePrice + (Math.random() - 0.5) * 20
-      });
-    }
-    return data;
-  };
-
   useEffect(() => {
-    setChartData(generateChartData());
     const ticker = setInterval(() => {
       const live = getLiveLTP(contractData.strike, contractData.type);
       if (live != null) setPremium(live);
     }, 1000);
     return () => clearInterval(ticker);
-  }, [interval, contractData.strike, contractData.type]);
+  }, [getLiveLTP, contractData.strike, contractData.type]);
 
   // Live Greeks and Stats
   const livePrice = getLivePrice(contractData.strike, contractData.type);
   const liveIV = livePrice?.iv != null ? livePrice.iv : null;
 
   const greeks = {
-    delta: (0.5 + Math.random() * 0.3).toFixed(3),
-    gamma: (0.01 + Math.random() * 0.02).toFixed(4),
-    theta: (-0.5 - Math.random() * 0.3).toFixed(3),
-    vega: (liveIV != null ? (liveIV * 0.01).toFixed(3) : (0.1 + Math.random() * 0.2).toFixed(3)),
-    rho: (0.05 + Math.random() * 0.05).toFixed(4)
+    delta: livePrice?.delta?.toFixed?.(3) ?? '—',
+    gamma: livePrice?.gamma?.toFixed?.(4) ?? '—',
+    theta: livePrice?.theta?.toFixed?.(3) ?? '—',
+    vega: livePrice?.vega?.toFixed?.(3) ?? '—',
+    rho: livePrice?.rho?.toFixed?.(4) ?? '—'
   };
 
   const stats = {
-    bid: livePrice?.bid != null ? livePrice.bid.toFixed(2) : (premium * 0.98).toFixed(2),
-    ask: livePrice?.ask != null ? livePrice.ask.toFixed(2) : (premium * 1.02).toFixed(2),
-    openInterest: livePrice?.oi != null ? livePrice.oi : Math.floor(Math.random() * 1000000 + 500000),
-    volume: livePrice?.volume != null ? livePrice.volume : Math.floor(Math.random() * 500000 + 100000),
-    iv: liveIV != null ? liveIV.toFixed(2) : (15 + Math.random() * 10).toFixed(2),
-    change: livePrice?.change != null ? livePrice.change.toFixed(2) : ((Math.random() - 0.5) * 10).toFixed(2)
+    bid: livePrice?.bid != null ? livePrice.bid.toFixed(2) : '—',
+    ask: livePrice?.ask != null ? livePrice.ask.toFixed(2) : '—',
+    openInterest: livePrice?.oi ?? null,
+    volume: livePrice?.volume ?? null,
+    iv: liveIV != null ? Number(liveIV).toFixed(2) : '—',
+    change: livePrice?.change != null ? livePrice.change.toFixed(2) : '—'
   };
 
   const contracts = rawQty * lotSize;
@@ -87,6 +73,7 @@ export default function OptionContractPage({ contractData, onBack, onTrade }) {
   };
 
   const formatNumber = (value) => {
+    if (value == null) return '—';
     if (value >= 10000000) return (value / 10000000).toFixed(2) + ' Cr';
     if (value >= 100000) return (value / 100000).toFixed(2) + ' L';
     return value.toLocaleString();
@@ -107,10 +94,10 @@ export default function OptionContractPage({ contractData, onBack, onTrade }) {
         
         <div className="contract-page__header-right">
           <span className="contract-page__premium-label">Premium</span>
-          <span className={`contract-page__premium-value ${parseFloat(stats.change) >= 0 ? 'positive' : 'negative'}`}>
-            ₹{premium.toFixed(2)}
+          <span className={`contract-page__premium-value ${Number(stats.change) >= 0 ? 'positive' : 'negative'}`}>
+            {Number.isFinite(premium) ? `₹${premium.toFixed(2)}` : 'Unavailable'}
             <span className="contract-page__change">
-              ({parseFloat(stats.change) >= 0 ? '+' : ''}{stats.change}%)
+              {stats.change !== '—' ? `(${Number(stats.change) >= 0 ? '+' : ''}${stats.change}%)` : ''}
             </span>
           </span>
         </div>
@@ -134,7 +121,7 @@ export default function OptionContractPage({ contractData, onBack, onTrade }) {
               </div>
             </div>
             <div className="contract-page__chart-container">
-              <ResponsiveContainer width="100%" height={400}>
+              {chartData.length === 0 ? <p>Live option chart history unavailable.</p> : <ResponsiveContainer width="100%" height={400}>
                 <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="contractFill" x1="0" y1="0" x2="0" y2="1">
@@ -151,7 +138,7 @@ export default function OptionContractPage({ contractData, onBack, onTrade }) {
                   />
                   <Area type="monotone" dataKey="close" stroke="#3b82f6" strokeWidth={2} fill="url(#contractFill)" />
                 </AreaChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </div>
           </div>
 
@@ -206,7 +193,7 @@ export default function OptionContractPage({ contractData, onBack, onTrade }) {
               </div>
               <div className="stat-row">
                 <span className="stat-row__label">Spot Price</span>
-                <span className="stat-row__value">₹{contractData.spotPrice.toFixed(2)}</span>
+                <span className="stat-row__value">{Number.isFinite(contractData.spotPrice) ? `₹${contractData.spotPrice.toFixed(2)}` : '—'}</span>
               </div>
             </div>
           </div>
