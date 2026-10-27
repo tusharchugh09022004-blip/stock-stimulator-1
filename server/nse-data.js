@@ -201,7 +201,7 @@ async function getNifty50QuoteMap() {
 
   nifty50QuoteRequest = (async () => {
     await ensureSession();
-    const response = await axiosInstance.get(`${NSE_HOME}/api/equity-stockIndices`, {
+    const response = await axiosInstance.get(`${NSE_HOME}/api/equity-stock-indices`, {
       params: { index: 'NIFTY 50' },
       headers: { 'Referer': `${NSE_HOME}/market-data/live-equity-market` }
     });
