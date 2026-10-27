@@ -1251,6 +1251,7 @@ app.post('/api/options/subscribe-strikes', (req, res) => {
 });
 
 setInterval(async () => {
+  if (Date.now() < yahooRateLimitedUntil) return;
   try {
     const sampleQuote = await resolveQuote('RELIANCE');
     io.emit('stockUpdate', sampleQuote);
@@ -1314,7 +1315,7 @@ updateCacheFromUpstox().then(ok => {
     });
   }
 });
-// Refresh cache every 15s
+// Refresh live option data once a minute
 setInterval(async () => {
   if (!(await updateCacheFromUpstox())) {
     nseData.warmSession();
@@ -1404,9 +1405,8 @@ async function getSpotPriceForIndex(index) {
 
 async function updateNseCache() {
   try {
-    const spotPrice = await getSpotPriceForIndex('NIFTY');
-    const result = await nseData.getNiftyOptionChain(spotPrice);
-    if (result?.chain?.length) {
+    const result = await nseData.getNiftyOptionChain();
+    if (result?.chain?.length && result.spotPrice > 0) {
       nseCache = {
         data: {
           chain: result.chain,
@@ -1425,21 +1425,24 @@ async function updateNseCache() {
 
 // Get available expiration dates from Upstox
 app.get('/api/options/expiries/:index', async (req, res) => {
+  let error;
   try {
-    // Try per-user token first
     let userToken = null;
     if (req.userId) {
       const userTokens = await db.getUpstoxTokens(req.userId);
-      if (userTokens && userTokens.accessToken) userToken = userTokens.accessToken;
+      if (userTokens?.accessToken) userToken = userTokens.accessToken;
     }
-    const upstoxExpiries = await upstoxApi.getExpiryDates(req.params.index, userToken);
-    if (upstoxExpiries && upstoxExpiries.length > 0) {
-      return res.json(upstoxExpiries);
-    }
+    const expiries = await upstoxApi.getExpiryDates(req.params.index, userToken);
+    if (expiries?.length) return res.json(expiries);
   } catch (err) {
-    return res.status(503).json({ error: 'Live option expiries unavailable', detail: err.message });
+    error = err;
   }
-  return res.status(503).json({ error: 'Live option expiries unavailable' });
+
+  if (req.params.index.toUpperCase() === 'NIFTY') {
+    const nseExpiries = await nseData.getNiftyExpiries();
+    if (nseExpiries?.length) return res.json(nseExpiries);
+  }
+  return res.status(503).json({ error: 'Live option expiries unavailable', detail: error?.message });
 });
 
 // Options Chain Endpoint (authenticated Upstox, or fresh NSE data for NIFTY)
