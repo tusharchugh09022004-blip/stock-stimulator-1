@@ -445,6 +445,17 @@ async function resolveQuote(symbol) {
 }
 
 async function resolveQuoteUncached(symbol, query) {
+  try {
+    const liveNseQuote = await nseData.getLiveQuote(query);
+    if (liveNseQuote?.regularMarketPrice > 0) {
+      const quote = { ...liveNseQuote, symbol: normalizeDisplaySymbol(query) };
+      setCachedQuote(query, quote);
+      return quote;
+    }
+  } catch (err) {
+    console.warn(`[NSE] Live quote unavailable for ${symbol}: ${err.message}`);
+  }
+
   await waitForSlot();
   activeRequests++;
   let providerError;

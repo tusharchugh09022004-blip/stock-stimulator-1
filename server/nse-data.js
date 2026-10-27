@@ -7,6 +7,11 @@ let axiosInstance = null;
 let lastRefresh = 0;
 let sessionReady = false;
 let sessionPromise = null;
+let nifty50QuoteCache = new Map();
+let nifty50QuoteCacheAt = 0;
+let nifty50QuoteRequest = null;
+let indicesQuoteCache = null;
+let indicesQuoteCacheAt = 0;
 
 function getNextTuesday() {
   const d = new Date();
@@ -176,6 +181,84 @@ function parseExpiries(rawData) {
   }).filter(Boolean);
 }
 
+
+async function getNifty50QuoteMap() {
+  if (Date.now() - nifty50QuoteCacheAt < 60000) return nifty50QuoteCache;
+  if (nifty50QuoteRequest) return nifty50QuoteRequest;
+
+  nifty50QuoteRequest = (async () => {
+    await ensureSession();
+    const response = await axiosInstance.get(`${NSE_HOME}/api/equity-stockIndices`, {
+      params: { index: 'NIFTY 50' },
+      headers: { 'Referer': `${NSE_HOME}/market-data/live-equity-market` }
+    });
+    const rows = response.data?.data;
+    if (!Array.isArray(rows)) throw new Error('NSE returned an invalid NIFTY 50 quote response');
+    const quotes = new Map();
+    for (const row of rows) {
+      const symbol = String(row.symbol || '').toUpperCase();
+      const price = Number(row.lastPrice ?? row.last);
+      const previousClose = Number(row.previousClose ?? row.previousDayClose);
+      if (!symbol || !(price > 0)) continue;
+      quotes.set(symbol, {
+        symbol,
+        yahooSymbol: `${symbol}.NS`,
+        longName: row.companyName || row.meta?.companyName || symbol,
+        shortName: symbol,
+        exchange: 'NSE',
+        regularMarketPrice: price,
+        regularMarketChange: Number(row.change ?? (previousClose > 0 ? price - previousClose : 0)),
+        regularMarketChangePercent: Number(row.pChange ?? row.percentChange ?? 0),
+        regularMarketVolume: Number(row.totalTradedVolume ?? row.totalTradedVolumeInLakhs ?? 0),
+        source: 'nse'
+      });
+    }
+    nifty50QuoteCache = quotes;
+    nifty50QuoteCacheAt = Date.now();
+    return quotes;
+  })().catch(err => {
+    nifty50QuoteCacheAt = Date.now();
+    nifty50QuoteCache = new Map();
+    console.warn(`[NSE] NIFTY 50 quote request failed: ${err.message}`);
+    return nifty50QuoteCache;
+  }).finally(() => { nifty50QuoteRequest = null; });
+
+  return nifty50QuoteRequest;
+}
+
+async function getLiveQuote(symbol) {
+  await ensureSession();
+  const normalized = String(symbol || '').trim().toUpperCase();
+  if (normalized === '^NSEI' || normalized === 'NIFTY' || normalized === 'NIFTY 50') {
+    if (!indicesQuoteCache || Date.now() - indicesQuoteCacheAt >= 30000) {
+      const response = await axiosInstance.get(`${NSE_HOME}/api/allIndices`, {
+        headers: { 'Referer': `${NSE_HOME}/market-data/live-equity-market` }
+      });
+      const rows = response.data?.data;
+      if (!Array.isArray(rows)) throw new Error('NSE returned an invalid index quote response');
+      indicesQuoteCache = rows;
+      indicesQuoteCacheAt = Date.now();
+    }
+    const row = indicesQuoteCache.find(item =>
+      String(item.index || item.indexSymbol || item.name || '').toUpperCase() === 'NIFTY 50'
+    );
+    const price = Number(row?.last ?? row?.lastPrice ?? row?.currentValue);
+    if (!(price > 0)) return null;
+    const change = Number(row.change ?? 0);
+    return {
+      symbol: '^NSEI', yahooSymbol: '^NSEI', longName: 'NIFTY 50', shortName: 'NIFTY',
+      exchange: 'NSE', regularMarketPrice: price, regularMarketChange: change,
+      regularMarketChangePercent: Number(row.percentChange ?? row.pChange ?? 0),
+      regularMarketVolume: Number(row.totalTradedVolume ?? 0), source: 'nse'
+    };
+  }
+
+  if (normalized.startsWith('^')) return null;
+  const ticker = normalized.replace(/\.NS$/, '');
+  const quote = (await getNifty50QuoteMap()).get(ticker);
+  return quote || null;
+}
+
 async function getNiftyOptionChain(spotPrice) {
   try {
     const defaultExpiry = formatNseDate(getNextTuesday());
@@ -206,4 +289,4 @@ async function warmSession() {
   }
 }
 
-module.exports = { getNiftyOptionChain, getNiftyExpiries, warmSession };
+module.exports = { getNiftyOptionChain, getNiftyExpiries, getLiveQuote, warmSession };
