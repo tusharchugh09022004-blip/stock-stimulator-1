@@ -75,13 +75,12 @@ async function initSchema() {
 
       CREATE TABLE IF NOT EXISTS login_history (
         id SERIAL PRIMARY KEY,
-        "userId" TEXT NOT NULL,
+        "userId" TEXT,
         username TEXT NOT NULL,
         action TEXT NOT NULL,
         "ipAddress" TEXT,
         "userAgent" TEXT,
-        "loginTime" TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY("userId") REFERENCES users("userId")
+        "loginTime" TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS options_portfolios (
@@ -145,6 +144,11 @@ async function initSchema() {
     try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxRefreshToken" TEXT`); } catch (_) {}
     try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxTokenExpiry" BIGINT`); } catch (_) {}
     try { await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "upstoxConnectedAt" TEXT`); } catch (_) {}
+
+    // Failed login attempts do not have a matching users row. Keep them in the
+    // audit history with a nullable userId instead of rejecting them via FK.
+    await client.query('ALTER TABLE login_history ALTER COLUMN "userId" DROP NOT NULL');
+    await client.query('ALTER TABLE login_history DROP CONSTRAINT IF EXISTS login_history_userId_fkey');
 
     console.log('[DB] Schema initialized successfully');
   } finally {
@@ -313,7 +317,7 @@ async function saveLoginHistory(userId, username, action, ipAddress, userAgent) 
     await pool.query(`
       INSERT INTO login_history ("userId", username, action, "ipAddress", "userAgent", "loginTime")
       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-    `, [userId || 'unknown', username, action, ipAddress || null, userAgent || null]);
+    `, [userId || null, username, action, ipAddress || null, userAgent || null]);
   } catch (err) {
     console.error('[DB] saveLoginHistory failed:', err.message);
   }
