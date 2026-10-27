@@ -778,10 +778,10 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                               >
                                 {inWatchlist(stock.symbol) ? 'In Watchlist' : 'Add to Watchlist'}
                               </button>
-                              <button className="market-action-btn market-action-btn--buy" onClick={() => handleTrade('buy', stock)} disabled={stock.stale || !(stock.regularMarketPrice > 0)} title={stock.stale ? 'Trading is disabled while only cached prices are available' : !(stock.regularMarketPrice > 0) ? 'Trading needs a provider quote' : undefined}>
+                              <button className="market-action-btn market-action-btn--buy" onClick={() => handleTrade('buy', stock)} disabled={!(stock.regularMarketPrice > 0)} title={!(stock.regularMarketPrice > 0) ? 'Trading needs a quote with a usable price' : stock.stale ? 'Uses the last saved quote because the live quote is unavailable' : undefined}>
                                 Buy Shares
                               </button>
-                              <button className="market-action-btn market-action-btn--sell" onClick={() => handleTrade('sell', stock)} disabled={stock.stale || !(stock.regularMarketPrice > 0)} title={stock.stale ? 'Trading is disabled while only cached prices are available' : !(stock.regularMarketPrice > 0) ? 'Trading needs a provider quote' : undefined}>
+                              <button className="market-action-btn market-action-btn--sell" onClick={() => handleTrade('sell', stock)} disabled={!(stock.regularMarketPrice > 0)} title={!(stock.regularMarketPrice > 0) ? 'Trading needs a quote with a usable price' : stock.stale ? 'Uses the last saved quote because the live quote is unavailable' : undefined}>
                                 Sell Shares
                               </button>
                             </div>
