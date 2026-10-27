@@ -120,6 +120,15 @@ function App() {
     userId: localStorage.getItem('userId'),
     username: localStorage.getItem('username')
   });
+
+const formatMarketDataStatus = (data) => {
+  if (!data?.stale) return '';
+  const date = data.observedAt ? new Date(data.observedAt) : null;
+  const time = date && !Number.isNaN(date.getTime())
+    ? date.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    : 'unknown time';
+  return `Cached data · as of ${time}`;
+};
   
   const [userData, setUserData] = useState({ balance: 10000000, portfolio: {} });
   const [stocks, setStocks] = useState([]);
@@ -685,7 +694,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                   <h2 className="market-panel__title">Market Results</h2>
                   <p className="market-panel__subtitle">Search for stocks, inspect momentum, and place your next simulated trade.</p>
                 </div>
-                <div className="market-panel__badge">Live quotes</div>
+                <div className="market-panel__badge">Live when available · cached prices labeled</div>
               </div>
 
               <div className="market-panel__body">
@@ -718,7 +727,8 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                               <div className="market-stock-card__tag">{stock.exchange || 'Indian Market'}</div>
                               <h3 className="market-stock-card__symbol">{stock.symbol}</h3>
                               <p className="market-stock-card__company">{stock.longName || stock.shortName}</p>
-                              <p className="market-stock-card__label">Current market price</p>
+                              <p className="market-stock-card__label">{stock.stale ? 'Last saved price' : 'Market price'}</p>
+                              {stock.stale && <p className="market-data-status">{formatMarketDataStatus(stock)}</p>}
                             </div>
                             <div className="market-stock-card__price-block">
                               <p className="market-stock-card__price">{formatCurrency(stock.regularMarketPrice)}</p>
@@ -762,10 +772,10 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                               >
                                 {inWatchlist(stock.symbol) ? 'In Watchlist' : 'Add to Watchlist'}
                               </button>
-                              <button className="market-action-btn market-action-btn--buy" onClick={() => handleTrade('buy', stock)}>
+                              <button className="market-action-btn market-action-btn--buy" onClick={() => handleTrade('buy', stock)} disabled={stock.stale} title={stock.stale ? 'Trading is disabled while only cached prices are available' : undefined}>
                                 Buy Shares
                               </button>
-                              <button className="market-action-btn market-action-btn--sell" onClick={() => handleTrade('sell', stock)}>
+                              <button className="market-action-btn market-action-btn--sell" onClick={() => handleTrade('sell', stock)} disabled={stock.stale} title={stock.stale ? 'Trading is disabled while only cached prices are available' : undefined}>
                                 Sell Shares
                               </button>
                             </div>
@@ -785,6 +795,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                     <p className="trend-panel__eyebrow">Trend analysis</p>
                     <h2>{activeStock.symbol} price history</h2>
                     <p className="trend-panel__subtitle">Interactive range view inspired by financial chart dashboards.</p>
+                    {chartMeta?.stale && <p className="market-data-status">{formatMarketDataStatus(chartMeta)}</p>}
                   </div>
                   <div className="trend-range-switcher">
                     {CHART_RANGES.map((range) => (
@@ -829,6 +840,8 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                 <div className="trend-chart-shell">
                   {chartLoading ? (
                     <div className="trend-loading">Loading chart...</div>
+                  ) : chartData.length === 0 ? (
+                    <div className="trend-loading">No saved price history is available yet. The market data provider is temporarily unavailable.</div>
                   ) : (
                     <ResponsiveContainer width="100%" height={420}>
                       <AreaChart data={chartData} margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
@@ -903,12 +916,14 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                       <div key={key} className="index-chart-card">
                         <div className="index-chart-card__header">
                           <h3>{title}</h3>
+                          {chartMeta?.stale && <span className="market-data-status">{formatMarketDataStatus(chartMeta)}</span>}
                           <div className={`index-chart-card__change index-chart-card__change--${isPositive ? 'positive' : 'negative'}`}>
                             {isPositive ? '▲' : '▼'} {Math.abs(chartMeta?.changePercent ?? data.regularMarketChangePercent ?? 0).toFixed(2)}%
                           </div>
                         </div>
                         
                         <div className="index-chart-card__price">{formatCurrency(chartMeta?.currentPrice || data.regularMarketPrice)}</div>
+                        {data.stale && <p className="market-data-status">{formatMarketDataStatus(data)}</p>}
                         
                         <div className="index-chart-card__stats">
                           <div className="index-stat">
@@ -967,7 +982,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                             </ResponsiveContainer>
                           </div>
                         ) : (
-                          <div className="index-chart-empty">No chart data available</div>
+                          <div className="index-chart-empty">No saved price history is available yet. The market data provider is temporarily unavailable.</div>
                         )}
                       </div>
                     );

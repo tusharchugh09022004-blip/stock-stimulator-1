@@ -322,12 +322,40 @@ function getCachedQuote(symbol) {
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
-  quoteCache.delete(symbol);
   return null;
 }
 
 function setCachedQuote(symbol, data) {
-  quoteCache.set(symbol, { data, timestamp: Date.now() });
+  const timestamp = Date.now();
+  const quote = { ...data, observedAt: data.observedAt || new Date(timestamp).toISOString(), dataStatus: 'available' };
+  quoteCache.set(symbol, { data: quote, timestamp });
+  db.saveMarketDataCache(`quote:${symbol}`, quote).catch(err => {
+    console.warn(`[Cache] Could not persist quote ${symbol}: ${err.message}`);
+  });
+}
+
+async function getStaleQuote(symbol) {
+  const inMemory = quoteCache.get(symbol);
+  if (inMemory) {
+    const observedAt = inMemory.data.observedAt || new Date(inMemory.timestamp).toISOString();
+    const ageMs = Date.now() - new Date(observedAt).getTime();
+    if (Number.isFinite(ageMs) && ageMs <= 7 * 24 * 60 * 60 * 1000) {
+      return { ...inMemory.data, observedAt, dataStatus: 'stale', stale: true };
+    }
+  }
+  try {
+    const stored = await db.getMarketDataCache(`quote:${symbol}`);
+    if (!stored?.payload) return null;
+    const observedAt = stored.payload.observedAt || stored.updated_at;
+    const ageMs = Date.now() - new Date(observedAt).getTime();
+    if (!Number.isFinite(ageMs) || ageMs > 7 * 24 * 60 * 60 * 1000) return null;
+    const quote = { ...stored.payload, observedAt, dataStatus: 'stale', stale: true };
+    quoteCache.set(symbol, { data: quote, timestamp: 0 });
+    return quote;
+  } catch (err) {
+    console.warn(`[Cache] Could not read saved quote ${symbol}: ${err.message}`);
+    return null;
+  }
 }
 
 function canonicalMarketSymbol(symbol) {
@@ -492,7 +520,14 @@ async function resolveQuoteUncached(symbol, query) {
     activeRequests--;
   }
 
-  if (Date.now() < yahooRateLimitedUntil) throw yahooCooldownError();
+  if (Date.now() < yahooRateLimitedUntil) {
+    const staleQuote = await getStaleQuote(query);
+    if (staleQuote) {
+      console.warn(`[Market] Serving last saved quote for ${symbol} from ${staleQuote.observedAt}`);
+      return { ...staleQuote, symbol: normalizeDisplaySymbol(query) };
+    }
+    throw yahooCooldownError();
+  }
 
   try {
     const quote = await fetchQuoteDirect(query);
@@ -502,6 +537,11 @@ async function resolveQuoteUncached(symbol, query) {
   } catch (err) {
     noteYahooRateLimit(err);
     if (!isYahooRateLimit(err)) console.error('Direct Yahoo quote failed for', symbol, err.message);
+    const staleQuote = await getStaleQuote(query);
+    if (staleQuote) {
+      console.warn(`[Market] Serving last saved quote for ${symbol} from ${staleQuote.observedAt}`);
+      return { ...staleQuote, symbol: normalizeDisplaySymbol(query) };
+    }
     throw new Error(`Live quote unavailable for ${symbol}: ${err.message || providerError?.message}`);
   }
 }
@@ -512,16 +552,40 @@ async function fetchChartSeries(symbol, range = '1d') {
   if (cached && Date.now() - cached.timestamp < CHART_CACHE_TTL) {
     return cached.data;
   }
-  chartCache.delete(cacheKey);
 
   const existingRequest = chartInFlight.get(cacheKey);
   if (existingRequest) return existingRequest;
 
   const request = fetchChartSeriesUncached(symbol, range)
     .then(data => {
+      data.dataStatus = 'available';
+      data.observedAt = new Date().toISOString();
       chartCache.set(cacheKey, { data, timestamp: Date.now() });
+      db.saveMarketDataCache(`chart:${cacheKey}`, data).catch(err => {
+        console.warn(`[Cache] Could not persist chart ${cacheKey}: ${err.message}`);
+      });
       if (chartCache.size > 500) chartCache.delete(chartCache.keys().next().value);
       return data;
+    })
+    .catch(async err => {
+      const memoryCache = chartCache.get(cacheKey)?.data;
+      let stale = memoryCache || null;
+      if (!stale) {
+        try {
+          const stored = await db.getMarketDataCache(`chart:${cacheKey}`);
+          stale = stored?.payload || null;
+        } catch (cacheErr) {
+          console.warn(`[Cache] Could not read saved chart ${cacheKey}: ${cacheErr.message}`);
+        }
+      }
+      const ageMs = stale?.observedAt ? Date.now() - new Date(stale.observedAt).getTime() : Infinity;
+      if (stale?.points?.length && ageMs <= 30 * 24 * 60 * 60 * 1000) {
+        const staleResponse = { ...stale, dataStatus: 'stale', stale: true };
+        chartCache.set(cacheKey, { data: staleResponse, timestamp: 0 });
+        console.warn(`[Market] Serving last saved chart for ${symbol} from ${stale.observedAt}`);
+        return staleResponse;
+      }
+      throw err;
     })
     .finally(() => chartInFlight.delete(cacheKey));
 

@@ -113,6 +113,13 @@ async function initSchema() {
         FOREIGN KEY("userId") REFERENCES users("userId")
       );
 
+      CREATE TABLE IF NOT EXISTS market_data_cache (
+        cache_key TEXT PRIMARY KEY,
+        payload JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_market_data_cache_updated_at ON market_data_cache(updated_at);
+
       CREATE TABLE IF NOT EXISTS trades (
         id SERIAL PRIMARY KEY,
         "userId" TEXT NOT NULL,
@@ -520,6 +527,23 @@ async function getAllUsersWithUpstoxTokens() {
   }));
 }
 
+async function saveMarketDataCache(cacheKey, payload) {
+  await pool.query(`
+    INSERT INTO market_data_cache (cache_key, payload, updated_at)
+    VALUES ($1, $2::jsonb, CURRENT_TIMESTAMP)
+    ON CONFLICT (cache_key) DO UPDATE
+    SET payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at
+  `, [cacheKey, JSON.stringify(payload)]);
+}
+
+async function getMarketDataCache(cacheKey) {
+  const { rows } = await pool.query(
+    'SELECT payload, updated_at FROM market_data_cache WHERE cache_key = $1',
+    [cacheKey]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   pool,
   initSchema,
@@ -558,5 +582,7 @@ module.exports = {
   saveUpstoxTokens,
   getUpstoxTokens,
   clearUpstoxTokens,
-  getAllUsersWithUpstoxTokens
+  getAllUsersWithUpstoxTokens,
+  saveMarketDataCache,
+  getMarketDataCache
 };

@@ -7,6 +7,7 @@ let axiosInstance = null;
 let lastRefresh = 0;
 let sessionReady = false;
 let sessionPromise = null;
+let sessionRetryAfter = 0;
 let nifty50QuoteCache = new Map();
 let nifty50QuoteCacheAt = 0;
 let nifty50QuoteRequest = null;
@@ -39,9 +40,20 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+function normalizeObservationTime(value) {
+  if (value) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 async function ensureSession() {
   const now = Date.now();
   if (sessionReady && lastRefresh && now - lastRefresh < 120000) return;
+  if (!sessionReady && now < sessionRetryAfter) {
+    throw new Error(`NSE session temporarily unavailable; retry in ${Math.ceil((sessionRetryAfter - now) / 1000)}s`);
+  }
 
   if (sessionPromise) return sessionPromise;
 
@@ -53,7 +65,7 @@ async function ensureSession() {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9'
         },
-        timeout: 15000,
+        timeout: 8000,
         withCredentials: true,
         maxRedirects: 5
       });
@@ -77,6 +89,7 @@ async function ensureSession() {
     } catch (err) {
       console.warn(`[NSE] Session error: ${err.message}`);
       sessionReady = false;
+      sessionRetryAfter = Date.now() + 60000;
       throw err;
     } finally {
       sessionPromise = null;
@@ -210,6 +223,7 @@ async function getNifty50QuoteMap() {
         regularMarketChange: Number(row.change ?? (previousClose > 0 ? price - previousClose : 0)),
         regularMarketChangePercent: Number(row.pChange ?? row.percentChange ?? 0),
         regularMarketVolume: Number(row.totalTradedVolume ?? row.totalTradedVolumeInLakhs ?? 0),
+        observedAt: normalizeObservationTime(row.lastUpdateTime || row.timestamp),
         source: 'nse'
       });
     }
@@ -227,10 +241,11 @@ async function getNifty50QuoteMap() {
 }
 
 async function getLiveQuote(symbol) {
-  await ensureSession();
   const normalized = String(symbol || '').trim().toUpperCase();
+  if (normalized === '^BSESN' || (normalized.startsWith('^') && normalized !== '^NSEI')) return null;
   if (normalized === '^NSEI' || normalized === 'NIFTY' || normalized === 'NIFTY 50') {
     if (!indicesQuoteCache || Date.now() - indicesQuoteCacheAt >= 30000) {
+      await ensureSession();
       const response = await axiosInstance.get(`${NSE_HOME}/api/allIndices`, {
         headers: { 'Referer': `${NSE_HOME}/market-data/live-equity-market` }
       });
@@ -249,11 +264,11 @@ async function getLiveQuote(symbol) {
       symbol: '^NSEI', yahooSymbol: '^NSEI', longName: 'NIFTY 50', shortName: 'NIFTY',
       exchange: 'NSE', regularMarketPrice: price, regularMarketChange: change,
       regularMarketChangePercent: Number(row.percentChange ?? row.pChange ?? 0),
-      regularMarketVolume: Number(row.totalTradedVolume ?? 0), source: 'nse'
+      regularMarketVolume: Number(row.totalTradedVolume ?? 0),
+      observedAt: normalizeObservationTime(row.lastUpdateTime || row.timestamp), source: 'nse'
     };
   }
 
-  if (normalized.startsWith('^')) return null;
   const ticker = normalized.replace(/\.NS$/, '');
   const quote = (await getNifty50QuoteMap()).get(ticker);
   return quote || null;
