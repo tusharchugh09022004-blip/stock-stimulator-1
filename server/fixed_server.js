@@ -276,9 +276,14 @@ async function getYahooFinance() {
 
 // ===== CACHING & RATE LIMITING =====
 const quoteCache = new Map();
-const CACHE_TTL = 3 * 1000; // 3 seconds
+const CACHE_TTL = 30 * 1000; // Share quote results across frequent dashboard refreshes.
 let activeRequests = 0;
 const MAX_CONCURRENT_REQUESTS = 2;
+const chartCache = new Map();
+const chartInFlight = new Map();
+const CHART_CACHE_TTL = 5 * 60 * 1000;
+let activeChartRequests = 0;
+const MAX_CONCURRENT_CHART_REQUESTS = 2;
 
 const MOCK_INDICES = {
   '^NSEI': {
@@ -333,6 +338,12 @@ const MOCK_STOCKS = {
 
 async function waitForSlot() {
   while (activeRequests >= MAX_CONCURRENT_REQUESTS) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+
+async function waitForChartSlot() {
+  while (activeChartRequests >= MAX_CONCURRENT_CHART_REQUESTS) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 }
@@ -527,11 +538,15 @@ async function resolveQuote(symbol) {
 
       if (MOCK_INDICES[query] || MOCK_INDICES[symbol]) {
         console.log('Using fallback mock data for index', symbol);
-        return MOCK_INDICES[query] || MOCK_INDICES[symbol];
+        const fallback = MOCK_INDICES[query] || MOCK_INDICES[symbol];
+        setCachedQuote(symbol, fallback);
+        return fallback;
       }
       if (MOCK_STOCKS[query] || MOCK_STOCKS[symbol]) {
         console.log('Using fallback mock data for stock', symbol);
-        return MOCK_STOCKS[query] || MOCK_STOCKS[symbol];
+        const fallback = MOCK_STOCKS[query] || MOCK_STOCKS[symbol];
+        setCachedQuote(symbol, fallback);
+        return fallback;
       }
       throw lastError || new Error('Failed to fetch quote after retries');
     } finally {
@@ -553,10 +568,14 @@ async function resolveQuote(symbol) {
     const query = normalizeYahooSymbol(symbol);
 
     if (MOCK_INDICES[query] || MOCK_INDICES[symbol]) {
-      return MOCK_INDICES[query] || MOCK_INDICES[symbol];
+      const fallback = MOCK_INDICES[query] || MOCK_INDICES[symbol];
+      setCachedQuote(symbol, fallback);
+      return fallback;
     }
     if (MOCK_STOCKS[query] || MOCK_STOCKS[symbol]) {
-      return MOCK_STOCKS[query] || MOCK_STOCKS[symbol];
+      const fallback = MOCK_STOCKS[query] || MOCK_STOCKS[symbol];
+      setCachedQuote(symbol, fallback);
+      return fallback;
     }
 
     const upperSymbol = String(symbol || '').toUpperCase();
@@ -567,7 +586,7 @@ async function resolveQuote(symbol) {
     const price = Math.max(1, basePrice + delta);
     const changePercent = delta ? (delta / (price - delta)) * 100 : (Math.random() - 0.5) * 2;
 
-    return {
+    const fallback = {
       symbol,
       yahooSymbol: normalizeYahooSymbol(symbol),
       longName: symbol,
@@ -578,17 +597,42 @@ async function resolveQuote(symbol) {
       regularMarketChangePercent: changePercent,
       regularMarketVolume: Math.floor(Math.random() * 10000000)
     };
+    setCachedQuote(symbol, fallback);
+    return fallback;
   }
 }
 
 async function fetchChartSeries(symbol, range = '1d') {
+  const cacheKey = `${normalizeYahooSymbol(symbol)}:${range}`;
+  const cached = chartCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CHART_CACHE_TTL) {
+    return cached.data;
+  }
+  chartCache.delete(cacheKey);
+
+  const existingRequest = chartInFlight.get(cacheKey);
+  if (existingRequest) return existingRequest;
+
+  const request = fetchChartSeriesUncached(symbol, range)
+    .then(data => {
+      chartCache.set(cacheKey, { data, timestamp: Date.now() });
+      if (chartCache.size > 500) chartCache.delete(chartCache.keys().next().value);
+      return data;
+    })
+    .finally(() => chartInFlight.delete(cacheKey));
+
+  chartInFlight.set(cacheKey, request);
+  return request;
+}
+
+async function fetchChartSeriesUncached(symbol, range = '1d') {
   try {
     const query = normalizeYahooSymbol(symbol);
     const { yahooRange, interval } = getChartRangeConfig(range);
     
-    // Wait for available slot
-    await waitForSlot();
-    activeRequests++;
+    // Chart traffic has its own limiter so quote refreshes cannot hold charts open.
+    await waitForChartSlot();
+    activeChartRequests++;
     
     try {
       const encodedQuery = encodeURIComponent(query);
@@ -631,7 +675,7 @@ async function fetchChartSeries(symbol, range = '1d') {
       console.error('Yahoo chart request failed for', symbol, err.message);
       return generateFallbackChartSeries(symbol, range);
     } finally {
-      activeRequests--;
+      activeChartRequests--;
     }
   } catch (err) {
     console.error('Error fetching chart for', symbol, err.message);
