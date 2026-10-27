@@ -65,7 +65,7 @@ export default function NiftyOptionsPage({ onBack, onOptionClick }) {
     setOptionChain([]);
     fetchChain();
 
-    const interval = setInterval(fetchChain, 3000);
+    const interval = setInterval(fetchChain, 10000);
     return () => clearInterval(interval);
   }, [selectedExpiry]);
 

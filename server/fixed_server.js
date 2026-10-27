@@ -276,7 +276,8 @@ async function getYahooFinance() {
 
 // ===== CACHING & RATE LIMITING =====
 const quoteCache = new Map();
-const CACHE_TTL = 30 * 1000; // Share quote results across frequent dashboard refreshes.
+const quoteInFlight = new Map();
+const CACHE_TTL = 120 * 1000; // Limit upstream requests while keeping a short-lived real quote cache.
 let activeRequests = 0;
 const MAX_CONCURRENT_REQUESTS = 2;
 const chartCache = new Map();
@@ -310,8 +311,14 @@ function setCachedQuote(symbol, data) {
   quoteCache.set(symbol, { data, timestamp: Date.now() });
 }
 
+function canonicalMarketSymbol(symbol) {
+  const value = String(symbol || '').trim();
+  const aliases = { TATAMOTORS: 'TMPV', 'TATAMOTORS.NS': 'TMPV.NS', ZOMATO: 'ETERNAL', 'ZOMATO.NS': 'ETERNAL.NS' };
+  return aliases[value.toUpperCase()] || value;
+}
+
 function normalizeYahooSymbol(symbol) {
-  const query = String(symbol || '').trim();
+  const query = canonicalMarketSymbol(symbol);
   if (!query) return query;
   if (query.startsWith('^') || query.includes('.') || query.includes('=')) {
     return query;
@@ -404,9 +411,21 @@ async function fetchQuoteDirect(symbol) {
 }
 
 async function resolveQuote(symbol) {
-  const cached = getCachedQuote(symbol);
+  const query = normalizeYahooSymbol(symbol);
+  const cached = getCachedQuote(query);
   if (cached) return cached;
+  const existing = quoteInFlight.get(query);
+  if (existing) return existing;
+  const request = resolveQuoteUncached(symbol, query);
+  quoteInFlight.set(query, request);
+  try {
+    return await request;
+  } finally {
+    quoteInFlight.delete(query);
+  }
+}
 
+async function resolveQuoteUncached(symbol, query) {
   await waitForSlot();
   activeRequests++;
   let providerError;
@@ -414,12 +433,12 @@ async function resolveQuote(symbol) {
     try {
       const yahooFinance = await getYahooFinance();
       const result = await Promise.race([
-        yahooFinance.quote(normalizeYahooSymbol(symbol)),
+        yahooFinance.quote(query),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Yahoo quote timed out')), 12000))
       ]);
       if (!(result?.regularMarketPrice > 0)) throw new Error('Yahoo returned no live price');
       const quote = {
-        symbol,
+        symbol: normalizeDisplaySymbol(query),
         yahooSymbol: result.symbol,
         longName: result.longName,
         shortName: result.shortName,
@@ -429,7 +448,7 @@ async function resolveQuote(symbol) {
         regularMarketChangePercent: result.regularMarketChangePercent,
         regularMarketVolume: result.regularMarketVolume
       };
-      setCachedQuote(symbol, quote);
+      setCachedQuote(query, quote);
       return quote;
     } catch (err) {
       providerError = err;
@@ -440,8 +459,9 @@ async function resolveQuote(symbol) {
   }
 
   try {
-    const quote = await fetchQuoteDirect(symbol);
-    setCachedQuote(symbol, quote);
+    const quote = await fetchQuoteDirect(query);
+    quote.symbol = normalizeDisplaySymbol(query);
+    setCachedQuote(query, quote);
     return quote;
   } catch (err) {
     console.error('Direct Yahoo quote failed for', symbol, err.message);
@@ -626,7 +646,7 @@ const allIndianStocks = [
   { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank Ltd' },
   { symbol: 'LT', name: 'Larsen & Toubro Ltd' },
   { symbol: 'WIPRO', name: 'Wipro Ltd' },
-  { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd' },
+  { symbol: 'TMPV', name: 'Tata Motors Passenger Vehicles Ltd' },
   { symbol: 'MARUTI', name: 'Maruti Suzuki India Ltd' },
   { symbol: 'BAJFINANCE', name: 'Bajaj Finance Ltd' },
   { symbol: 'ADANIENT', name: 'Adani Enterprises Ltd' },
@@ -667,7 +687,7 @@ const allIndianStocks = [
   { symbol: 'HINDALCO', name: 'Hindalco Industries Ltd' },
   { symbol: 'TECHM', name: 'Tech Mahindra Ltd' },
   { symbol: 'INDUSINDBK', name: 'IndusInd Bank Ltd' },
-  { symbol: 'ZOMATO', name: 'Zomato Ltd' },
+  { symbol: 'ETERNAL', name: 'Eternal Ltd' },
   { symbol: 'PIDILITIND', name: 'Pidilite Industries Ltd' },
   { symbol: 'HAVELLS', name: 'Havells India Ltd' },
   { symbol: 'GODREJCP', name: 'Godrej Consumer Products Ltd' },
@@ -1272,7 +1292,7 @@ setInterval(async () => {
     nseData.warmSession();
     await updateNseCache();
   }
-}, 5000);
+}, 60000);
 
 // Auto-refresh per-user Upstox tokens every 5 minutes
 setInterval(async () => {

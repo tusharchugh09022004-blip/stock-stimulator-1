@@ -281,7 +281,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
       }
     };
 
-    const intervalId = setInterval(refreshQuote, 3000);
+    const intervalId = setInterval(refreshQuote, 15000);
     return () => clearInterval(intervalId);
   }, [activeStock?.yahooSymbol, activeStock?.symbol]);
 
@@ -362,7 +362,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
     const intervalId = setInterval(() => {
       fetchIndexQuote('^NSEI', 'nifty');
       fetchIndexQuote('^BSESN', 'sensex');
-    }, 3000);
+    }, 15000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -422,7 +422,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
     };
 
     fetchMovers();
-    const intervalId = setInterval(fetchMovers, 15000);
+    const intervalId = setInterval(fetchMovers, 60000);
     return () => { cancelled = true; clearInterval(intervalId); };
   }, []);
 
