@@ -42,7 +42,11 @@ function sleep(ms) {
 
 function normalizeObservationTime(value) {
   if (value) {
-    const parsed = new Date(value);
+    const raw = String(value);
+    const isoWithIndianOffset = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(raw)
+      ? `${raw.replace(' ', 'T')}+05:30`
+      : raw;
+    const parsed = new Date(isoWithIndianOffset);
     if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
   }
   return new Date().toISOString();

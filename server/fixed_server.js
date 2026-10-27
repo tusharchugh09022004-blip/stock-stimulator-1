@@ -278,6 +278,7 @@ async function getYahooFinance() {
 const quoteCache = new Map();
 const quoteInFlight = new Map();
 const CACHE_TTL = 120 * 1000; // Limit upstream requests while keeping a short-lived real quote cache.
+const LIVE_QUOTE_MAX_AGE_MS = 5 * 60 * 1000;
 let activeRequests = 0;
 const MAX_CONCURRENT_REQUESTS = 2;
 let yahooRateLimitedUntil = 0;
@@ -327,11 +328,26 @@ function getCachedQuote(symbol) {
 
 function setCachedQuote(symbol, data) {
   const timestamp = Date.now();
-  const quote = { ...data, observedAt: data.observedAt || new Date(timestamp).toISOString(), dataStatus: 'available' };
+  const observedAt = normalizeQuoteTimestamp(data.observedAt) || new Date(timestamp).toISOString();
+  const ageMs = timestamp - new Date(observedAt).getTime();
+  const stale = !Number.isFinite(ageMs) || ageMs > LIVE_QUOTE_MAX_AGE_MS;
+  const quote = { ...data, observedAt, dataStatus: stale ? 'stale' : 'available', stale };
   quoteCache.set(symbol, { data: quote, timestamp });
   db.saveMarketDataCache(`quote:${symbol}`, quote).catch(err => {
     console.warn(`[Cache] Could not persist quote ${symbol}: ${err.message}`);
   });
+}
+
+function normalizeQuoteTimestamp(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === 'number') {
+    const milliseconds = value < 1e12 ? value * 1000 : value;
+    const parsed = new Date(milliseconds);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 async function getStaleQuote(symbol) {
@@ -453,7 +469,8 @@ async function fetchQuoteDirect(symbol) {
     regularMarketPrice: price,
     regularMarketChange: price - previousClose,
     regularMarketChangePercent: ((price - previousClose) / previousClose) * 100,
-    regularMarketVolume: quotes.volume?.reduce((sum, value) => sum + (value || 0), 0) || 0
+    regularMarketVolume: quotes.volume?.reduce((sum, value) => sum + (value || 0), 0) || 0,
+    observedAt: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : new Date().toISOString()
   };
 }
 
@@ -505,7 +522,8 @@ async function resolveQuoteUncached(symbol, query) {
         regularMarketPrice: result.regularMarketPrice,
         regularMarketChange: result.regularMarketChange,
         regularMarketChangePercent: result.regularMarketChangePercent,
-        regularMarketVolume: result.regularMarketVolume
+        regularMarketVolume: result.regularMarketVolume,
+        observedAt: result.regularMarketTime ? new Date(result.regularMarketTime).toISOString() : new Date().toISOString()
       };
       setCachedQuote(query, quote);
       return quote;
