@@ -336,6 +336,7 @@ function setCachedQuote(symbol, data) {
   db.saveMarketDataCache(`quote:${symbol}`, quote).catch(err => {
     console.warn(`[Cache] Could not persist quote ${symbol}: ${err.message}`);
   });
+  return quote;
 }
 
 function normalizeQuoteTimestamp(value) {
@@ -494,8 +495,7 @@ async function resolveQuoteUncached(symbol, query) {
     const liveNseQuote = await nseData.getLiveQuote(query);
     if (liveNseQuote?.regularMarketPrice > 0) {
       const quote = { ...liveNseQuote, symbol: normalizeDisplaySymbol(query) };
-      setCachedQuote(query, quote);
-      return quote;
+      return setCachedQuote(query, quote);
     }
   } catch (err) {
     console.warn(`[NSE] Live quote unavailable for ${symbol}: ${err.message}`);
@@ -525,8 +525,7 @@ async function resolveQuoteUncached(symbol, query) {
         regularMarketVolume: result.regularMarketVolume,
         observedAt: result.regularMarketTime ? new Date(result.regularMarketTime).toISOString() : new Date().toISOString()
       };
-      setCachedQuote(query, quote);
-      return quote;
+      return setCachedQuote(query, quote);
     } catch (err) {
       providerError = err;
       noteYahooRateLimit(err);
@@ -550,8 +549,7 @@ async function resolveQuoteUncached(symbol, query) {
   try {
     const quote = await fetchQuoteDirect(query);
     quote.symbol = normalizeDisplaySymbol(query);
-    setCachedQuote(query, quote);
-    return quote;
+    return setCachedQuote(query, quote);
   } catch (err) {
     noteYahooRateLimit(err);
     if (!isYahooRateLimit(err)) console.error('Direct Yahoo quote failed for', symbol, err.message);
