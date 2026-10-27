@@ -33,6 +33,51 @@ axios.defaults.timeout = 15000;
 
 const CHART_RANGES = ['1d', '1w', '1m', '3m', '1y'];
 
+function createSimulatedChart(symbol, range, anchorPrice = 0, quote = {}) {
+  const counts = { '1d': 78, '1w': 60, '1m': 22, '3m': 66, '1y': 52 };
+  const count = counts[range] || counts['1m'];
+  const fallbackBases = { '^NSEI': 22000, '^BSESN': 74000 };
+  const base = Number(anchorPrice) > 0 ? Number(anchorPrice) : fallbackBases[symbol] || 1000;
+  const volatility = range === '1d' ? 0.0015 : range === '1w' ? 0.003 : range === '1y' ? 0.018 : 0.008;
+  let price = base * (0.97 + Math.random() * 0.06);
+  const now = Date.now();
+  const span = range === '1d' ? 6.5 * 60 * 60 * 1000
+    : range === '1w' ? 5 * 24 * 60 * 60 * 1000
+      : range === '1m' ? 30 * 24 * 60 * 60 * 1000
+        : range === '3m' ? 90 * 24 * 60 * 60 * 1000
+          : 365 * 24 * 60 * 60 * 1000;
+  const points = Array.from({ length: count }, (_, index) => {
+    const open = price;
+    price = Math.max(0.01, price * (1 + (Math.random() - 0.49) * volatility * 2));
+    const close = price;
+    const high = Math.max(open, close) * (1 + Math.random() * volatility * 0.6);
+    const low = Math.min(open, close) * (1 - Math.random() * volatility * 0.6);
+    const timestamp = now - span + (span * index) / Math.max(1, count - 1);
+    const date = new Date(timestamp);
+    const label = range === '1d'
+      ? date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    return { date, label, open, high, low, close, volume: Math.floor(10000 + Math.random() * 900000) };
+  });
+  const highs = points.map(point => point.high);
+  const lows = points.map(point => point.low);
+  const currentPrice = Number(anchorPrice) > 0 ? Number(anchorPrice) : null;
+  const change = Number(quote.regularMarketChange) || 0;
+  const previousClose = currentPrice ? currentPrice - change : null;
+  return {
+    symbol,
+    points,
+    currentPrice,
+    previousClose: previousClose > 0 ? previousClose : currentPrice,
+    change,
+    changePercent: Number(quote.regularMarketChangePercent) || 0,
+    stats: { open: points[0]?.open, high: Math.max(...highs), low: Math.min(...lows) },
+    dataStatus: 'simulated',
+    source: 'random simulation',
+    simulated: true
+  };
+}
+
 // Setup axios interceptor to add auth token
 const setupAuthInterceptor = (token) => {
   if (token) {
@@ -122,6 +167,7 @@ function App() {
   });
 
 const formatMarketDataStatus = (data) => {
+  if (data?.simulated) return 'Simulated random graph · illustrative only';
   if (!data?.stale) return '';
   const date = data.observedAt ? new Date(data.observedAt) : null;
   const time = date && !Number.isNaN(date.getTime())
@@ -248,35 +294,18 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
       return undefined;
     }
 
-    let cancelled = false;
-
-    const loadChart = async () => {
-      try {
-        setChartLoading(true);
-        const res = await axios.get(`/api/chart/${encodeURIComponent(activeStock.yahooSymbol || activeStock.symbol)}`, {
-          params: { range: chartRange }
-        });
-
-        if (!cancelled) {
-          setChartData(res.data.points || []);
-          setChartMeta(res.data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Chart fetch failed:', err);
-          setChartData([]);
-          setChartMeta(null);
-        }
-      } finally {
-        if (!cancelled) setChartLoading(false);
-      }
-    };
-
-    loadChart();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeStock?.yahooSymbol, activeStock?.symbol, chartRange]);
+    setChartLoading(true);
+    const simulated = createSimulatedChart(
+      activeStock.symbol,
+      chartRange,
+      activeStock.regularMarketPrice,
+      activeStock
+    );
+    setChartData(simulated.points);
+    setChartMeta(simulated);
+    setChartLoading(false);
+    return undefined;
+  }, [activeStock?.symbol, chartRange]);
 
   useEffect(() => {
     if (!activeStock?.yahooSymbol && !activeStock?.symbol) return undefined;
@@ -377,44 +406,19 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
 
   // Load Index Chart Data
   useEffect(() => {
-    let cancelled = false;
-
-    const loadIndexChart = async (symbol, indexKey) => {
-      try {
-        setIndexChartData(prev => ({
-          ...prev,
-          [indexKey]: { ...prev[indexKey], loading: true }
-        }));
-
-        const res = await axios.get(`/api/chart/${encodeURIComponent(symbol)}`, {
-          params: { range: indexChartRange }
-        });
-
-        if (!cancelled) {
-          setIndexChartData(prev => ({
-            ...prev,
-            [indexKey]: {
-              data: res.data.points || [],
-              meta: res.data,
-              loading: false
-            }
-          }));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error(`${indexKey} chart fetch failed:`, err);
-          setIndexChartData(prev => ({
-            ...prev,
-            [indexKey]: { data: [], meta: null, loading: false }
-          }));
-        }
+    const indices = [
+      { symbol: '^NSEI', key: 'nifty', quote: indexData.nifty },
+      { symbol: '^BSESN', key: 'sensex', quote: indexData.sensex }
+    ];
+    setIndexChartData(prev => {
+      const next = { ...prev };
+      for (const { symbol, key, quote } of indices) {
+        const mock = createSimulatedChart(symbol, indexChartRange, quote?.regularMarketPrice, quote || {});
+        next[key] = { data: mock.points, meta: mock, loading: false };
       }
-    };
+      return next;
+    });
 
-    loadIndexChart('^NSEI', 'nifty');
-    loadIndexChart('^BSESN', 'sensex');
-
-    return () => { cancelled = true; };
   }, [indexChartRange]);
 
   // Market Movers
@@ -464,10 +468,12 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
       setChartRange('1d');
     } catch (err) {
       console.error('Stock load failed:', err);
-      setStocks([]);
-      setChartData([]);
-      setChartMeta(null);
-      addToast({ type: 'error', message: err.response?.data?.error || 'Unable to find that stock' });
+      const symbol = value.replace(/\.NS$/i, '').toUpperCase();
+      setStocks([{ symbol, longName: symbol, dataStatus: 'unavailable', regularMarketPrice: 0 }]);
+      setSearchQuery(symbol);
+      setSuggestions([]);
+      setChartRange('1d');
+      addToast({ type: 'info', message: 'Live quote unavailable. Showing a simulated chart for this symbol.' });
     }
   };
 
@@ -727,11 +733,11 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                               <div className="market-stock-card__tag">{stock.exchange || 'Indian Market'}</div>
                               <h3 className="market-stock-card__symbol">{stock.symbol}</h3>
                               <p className="market-stock-card__company">{stock.longName || stock.shortName}</p>
-                              <p className="market-stock-card__label">{stock.stale ? 'Last saved price' : 'Market price'}</p>
+                              <p className="market-stock-card__label">{stock.stale ? 'Last saved price' : stock.regularMarketPrice > 0 ? 'Market price' : 'Quote unavailable'}</p>
                               {stock.stale && <p className="market-data-status">{formatMarketDataStatus(stock)}</p>}
                             </div>
                             <div className="market-stock-card__price-block">
-                              <p className="market-stock-card__price">{formatCurrency(stock.regularMarketPrice)}</p>
+                              <p className="market-stock-card__price">{stock.regularMarketPrice > 0 ? formatCurrency(stock.regularMarketPrice) : 'Unavailable'}</p>
                               <p className={`market-stock-card__change market-stock-card__change--${isPositive ? 'positive' : 'negative'}`}>
                                 {isPositive ? '▲' : '▼'} {Math.abs(stock.regularMarketChangePercent || 0).toFixed(2)}%
                               </p>
@@ -772,10 +778,10 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                               >
                                 {inWatchlist(stock.symbol) ? 'In Watchlist' : 'Add to Watchlist'}
                               </button>
-                              <button className="market-action-btn market-action-btn--buy" onClick={() => handleTrade('buy', stock)} disabled={stock.stale} title={stock.stale ? 'Trading is disabled while only cached prices are available' : undefined}>
+                              <button className="market-action-btn market-action-btn--buy" onClick={() => handleTrade('buy', stock)} disabled={stock.stale || !(stock.regularMarketPrice > 0)} title={stock.stale ? 'Trading is disabled while only cached prices are available' : !(stock.regularMarketPrice > 0) ? 'Trading needs a provider quote' : undefined}>
                                 Buy Shares
                               </button>
-                              <button className="market-action-btn market-action-btn--sell" onClick={() => handleTrade('sell', stock)} disabled={stock.stale} title={stock.stale ? 'Trading is disabled while only cached prices are available' : undefined}>
+                              <button className="market-action-btn market-action-btn--sell" onClick={() => handleTrade('sell', stock)} disabled={stock.stale || !(stock.regularMarketPrice > 0)} title={stock.stale ? 'Trading is disabled while only cached prices are available' : !(stock.regularMarketPrice > 0) ? 'Trading needs a provider quote' : undefined}>
                                 Sell Shares
                               </button>
                             </div>
@@ -793,9 +799,9 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                 <div className="trend-panel__header">
                   <div>
                     <p className="trend-panel__eyebrow">Trend analysis</p>
-                    <h2>{activeStock.symbol} price history</h2>
-                    <p className="trend-panel__subtitle">Interactive range view inspired by financial chart dashboards.</p>
-                    {chartMeta?.stale && <p className="market-data-status">{formatMarketDataStatus(chartMeta)}</p>}
+                    <h2>{activeStock.symbol} simulated chart</h2>
+                    <p className="trend-panel__subtitle">Random illustrative price path. Quote cards remain provider sourced.</p>
+                    {chartMeta && <p className="market-data-status">{formatMarketDataStatus(chartMeta)}</p>}
                   </div>
                   <div className="trend-range-switcher">
                     {CHART_RANGES.map((range) => (
@@ -812,7 +818,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
 
                 <div className="trend-hero">
                   <div>
-                    <div className="trend-hero__price">{formatCurrency(chartMeta?.currentPrice || activeStock.regularMarketPrice)}</div>
+                    <div className="trend-hero__price">{activeStock.regularMarketPrice > 0 ? formatCurrency(activeStock.regularMarketPrice) : 'Quote unavailable'}</div>
                     <div className={`trend-hero__change trend-hero__change--${chartPositive ? 'positive' : 'negative'}`}>
                       {chartPositive ? '▲' : '▼'} {Math.abs(chartMeta?.changePercent ?? activeStock.regularMarketChangePercent ?? 0).toFixed(2)}%
                     </div>
@@ -841,7 +847,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                   {chartLoading ? (
                     <div className="trend-loading">Loading chart...</div>
                   ) : chartData.length === 0 ? (
-                    <div className="trend-loading">No saved price history is available yet. The market data provider is temporarily unavailable.</div>
+                    <div className="trend-loading">Preparing simulated chart...</div>
                   ) : (
                     <ResponsiveContainer width="100%" height={420}>
                       <AreaChart data={chartData} margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
@@ -888,7 +894,7 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
               <div className="index-panel__header">
                 <div className="index-panel__title-group">
                   <p className="index-panel__eyebrow">INDIAN INDICES</p>
-                  <h3 className="index-panel__heading">Nifty 50 & Sensex Live</h3>
+                  <h3 className="index-panel__heading">Nifty 50 & Sensex</h3>
                 </div>
                 <div className="index-range-switcher">
                   {CHART_RANGES.map((range) => (
@@ -903,27 +909,26 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                 </div>
               </div>
               
-              {indexData.nifty || indexData.sensex ? (
-                <div className="index-grid">
+              <div className="index-grid">
                   {[ { key: 'nifty', data: indexData.nifty, title: 'NIFTY 50', symbol: '^NSEI', color: '#3b82f6' }, { key: 'sensex', data: indexData.sensex, title: 'SENSEX', symbol: '^BSESN', color: '#8b5cf6' } ].map(({ key, data, title, symbol, color }) => {
-                    if (!data) return null;
+                    const quote = data || {};
                     const chartMeta = indexChartData[key]?.meta;
                     const chartPoints = indexChartData[key]?.data || [];
                     const chartLoading = indexChartData[key]?.loading || false;
-                    const isPositive = (chartMeta?.changePercent ?? data.regularMarketChangePercent ?? 0) >= 0;
+                    const isPositive = (chartMeta?.changePercent ?? quote.regularMarketChangePercent ?? 0) >= 0;
                     
                     return (
                       <div key={key} className="index-chart-card">
                         <div className="index-chart-card__header">
                           <h3>{title}</h3>
-                          {chartMeta?.stale && <span className="market-data-status">{formatMarketDataStatus(chartMeta)}</span>}
+                          {chartMeta && <span className="market-data-status">{formatMarketDataStatus(chartMeta)}</span>}
                           <div className={`index-chart-card__change index-chart-card__change--${isPositive ? 'positive' : 'negative'}`}>
-                            {isPositive ? '▲' : '▼'} {Math.abs(chartMeta?.changePercent ?? data.regularMarketChangePercent ?? 0).toFixed(2)}%
+                            {isPositive ? '▲' : '▼'} {Math.abs(chartMeta?.changePercent ?? quote.regularMarketChangePercent ?? 0).toFixed(2)}%
                           </div>
                         </div>
                         
-                        <div className="index-chart-card__price">{formatCurrency(chartMeta?.currentPrice || data.regularMarketPrice)}</div>
-                        {data.stale && <p className="market-data-status">{formatMarketDataStatus(data)}</p>}
+                        <div className="index-chart-card__price">{quote.regularMarketPrice > 0 ? formatCurrency(quote.regularMarketPrice) : 'Quote unavailable'}</div>
+                        {quote.stale && <p className="market-data-status">{formatMarketDataStatus(quote)}</p>}
                         
                         <div className="index-chart-card__stats">
                           <div className="index-stat">
@@ -982,15 +987,12 @@ const [marketMovers, setMarketMovers] = useState({ gainers: [], losers: [], tren
                             </ResponsiveContainer>
                           </div>
                         ) : (
-                          <div className="index-chart-empty">No saved price history is available yet. The market data provider is temporarily unavailable.</div>
+                          <div className="index-chart-empty">Preparing simulated chart...</div>
                         )}
                       </div>
                     );
                   })}
-                </div>
-              ) : (
-                <div className="index-loading">Loading indices...</div>
-              )}
+              </div>
             </section>
             <section className="watchlist-panel">
               <div className="watchlist-panel__header">
