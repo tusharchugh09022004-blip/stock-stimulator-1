@@ -280,11 +280,30 @@ const quoteInFlight = new Map();
 const CACHE_TTL = 120 * 1000; // Limit upstream requests while keeping a short-lived real quote cache.
 let activeRequests = 0;
 const MAX_CONCURRENT_REQUESTS = 2;
+let yahooRateLimitedUntil = 0;
+const YAHOO_RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
 const chartCache = new Map();
 const chartInFlight = new Map();
 const CHART_CACHE_TTL = 5 * 60 * 1000;
 let activeChartRequests = 0;
 const MAX_CONCURRENT_CHART_REQUESTS = 2;
+
+function isYahooRateLimit(error) {
+  return error?.response?.status === 429 || /\b429\b|too many requests|rate limit/i.test(error?.message || '');
+}
+
+function noteYahooRateLimit(error) {
+  if (!isYahooRateLimit(error)) return;
+  if (Date.now() >= yahooRateLimitedUntil) {
+    yahooRateLimitedUntil = Date.now() + YAHOO_RATE_LIMIT_COOLDOWN_MS;
+    console.warn('[Yahoo] Rate limit reached; pausing Yahoo requests for five minutes');
+  }
+}
+
+function yahooCooldownError() {
+  const seconds = Math.max(1, Math.ceil((yahooRateLimitedUntil - Date.now()) / 1000));
+  return new Error(`Yahoo data temporarily unavailable after rate limiting; retry in ${seconds}s`);
+}
 
 async function waitForSlot() {
   while (activeRequests >= MAX_CONCURRENT_REQUESTS) {
@@ -431,6 +450,7 @@ async function resolveQuoteUncached(symbol, query) {
   let providerError;
   try {
     try {
+      if (Date.now() < yahooRateLimitedUntil) throw yahooCooldownError();
       const yahooFinance = await getYahooFinance();
       const result = await Promise.race([
         yahooFinance.quote(query),
@@ -452,11 +472,16 @@ async function resolveQuoteUncached(symbol, query) {
       return quote;
     } catch (err) {
       providerError = err;
-      console.error('yahoo-finance2 failed for', symbol, err.message);
+      noteYahooRateLimit(err);
+      if (!isYahooRateLimit(err) && Date.now() >= yahooRateLimitedUntil) {
+        console.error('yahoo-finance2 failed for', symbol, err.message);
+      }
     }
   } finally {
     activeRequests--;
   }
+
+  if (Date.now() < yahooRateLimitedUntil) throw yahooCooldownError();
 
   try {
     const quote = await fetchQuoteDirect(query);
@@ -464,7 +489,8 @@ async function resolveQuoteUncached(symbol, query) {
     setCachedQuote(query, quote);
     return quote;
   } catch (err) {
-    console.error('Direct Yahoo quote failed for', symbol, err.message);
+    noteYahooRateLimit(err);
+    if (!isYahooRateLimit(err)) console.error('Direct Yahoo quote failed for', symbol, err.message);
     throw new Error(`Live quote unavailable for ${symbol}: ${err.message || providerError?.message}`);
   }
 }
@@ -494,6 +520,7 @@ async function fetchChartSeries(symbol, range = '1d') {
 
 async function fetchChartSeriesUncached(symbol, range = '1d') {
   try {
+    if (Date.now() < yahooRateLimitedUntil) throw yahooCooldownError();
     const query = normalizeYahooSymbol(symbol);
     const { yahooRange, interval } = getChartRangeConfig(range);
     
@@ -537,7 +564,8 @@ async function fetchChartSeriesUncached(symbol, range = '1d') {
         previousClose: meta.chartPreviousClose || meta.previousClose
       });
     } catch (err) {
-      console.error('Yahoo chart request failed for', symbol, err.message);
+      noteYahooRateLimit(err);
+      if (!isYahooRateLimit(err)) console.error('Yahoo chart request failed for', symbol, err.message);
       throw err;
     } finally {
       activeChartRequests--;
